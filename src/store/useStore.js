@@ -171,7 +171,7 @@ export const useStore = create(
     }),
     {
       name: 'cinerank-store',
-      version: 3,  // bump this whenever store shape changes
+      version: 4,  // v4: clears stale players data, fresh load from Supabase
       migrate: (persisted) => {
         // Only {player, muted} are persisted — just pass them through
         return { player: persisted?.player || '', muted: persisted?.muted || false }

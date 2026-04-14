@@ -47,23 +47,6 @@ export default function App() {
 
   const [dbLoaded, setDbLoaded] = useState(false)
 
-  // Safety: ensure localStorage data is valid on first load
-  useEffect(() => {
-    try {
-      const stored = localStorage.getItem('cinerank-store')
-      if (stored) {
-        const parsed = JSON.parse(stored)
-        // If store version is old or data looks wrong, clear it
-        if (!parsed?.state || parsed?.version < 2) {
-          localStorage.removeItem('cinerank-store')
-        }
-      }
-    } catch(e) {
-      // Corrupt localStorage — clear it
-      try { localStorage.removeItem('cinerank-store') } catch {}
-    }
-  }, [])
-
   // Load all players from DB on mount
   useEffect(() => {
     async function load() {

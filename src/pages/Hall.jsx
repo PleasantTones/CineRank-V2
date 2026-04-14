@@ -35,6 +35,7 @@ export default function Hall() {
   const joyKnobRef  = useRef(null)
   const nearestRef  = useRef(null)
   const rafRef      = useRef(null)
+  const hasBuilt    = useRef(false)
 
   const { players, globalRatings, collected, collectPoster } = useStore()
   const collectedSet = useRef(new Set(collected))
