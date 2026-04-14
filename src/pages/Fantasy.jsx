@@ -892,10 +892,9 @@ function CommissionerPanel({ session, picks, draftPlayers, allMovies, onBack, on
     try {
       await sbFetch(`/rest/v1/draft_picks?session_id=eq.${session.id}`, { method: 'DELETE' })
       await sbFetch(`/rest/v1/draft_sessions?id=eq.${session.id}`, { method: 'DELETE' })
-      setMsg('✅ Draft deleted')
       await onReload()
-    } catch(e) { setMsg('Error: ' + e.message) }
-    setWorking(false)
+      onBack()  // return to lobby where they can start a new draft
+    } catch(e) { setMsg('Error: ' + e.message); setWorking(false) }
   }
 
   // Undo picks from a specific index onwards
