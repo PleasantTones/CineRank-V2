@@ -56,6 +56,7 @@ export default function Fantasy() {
   const [scoringLoading, setScoringLoading] = useState(false)
   const pollRef = useRef(null)
   const timerRef = useRef(null)
+  const autoPickRef = useRef(null)  // holds latest autoPickRandom to avoid TDZ in effects
   const [timeLeft, setTimeLeft] = useState(180)  // 3 min per pick
 
   // ── Load active session ───────────────────────────────────────────────────
@@ -98,21 +99,22 @@ export default function Fantasy() {
   }, [session?.current_pick_index])
 
   // Countdown timer — ticks every second, auto-picks on expiry
+  // Uses autoPickRef so we don't need autoPickRandom in deps (avoids TDZ)
   useEffect(() => {
-    if (view !== 'draft' || !session || isDraftComplete) return
+    if (view !== 'draft' || !session) return
     clearInterval(timerRef.current)
     timerRef.current = setInterval(() => {
       setTimeLeft(prev => {
         if (prev <= 1) {
           clearInterval(timerRef.current)
-          autoPickRandom()
+          autoPickRef.current?.()
           return 0
         }
         return prev - 1
       })
     }, 1000)
     return () => clearInterval(timerRef.current)
-  }, [view, session?.current_pick_index, isDraftComplete, autoPickRandom])
+  }, [view, session?.current_pick_index])
 
   // Poll for updates when draft is active
   useEffect(() => {
@@ -277,6 +279,8 @@ export default function Fantasy() {
       await loadSession()
     } catch(e) { setError('Auto-pick failed: ' + e.message) }
   }, [session, isDraftComplete, allMovies, pickedMovieIds, currentPicker, currentPickIndex, currentRound])
+  // Keep ref in sync with latest autoPickRandom so the timer effect always calls fresh version
+  autoPickRef.current = autoPickRandom
 
   const reorderPlayer = (from, to) => {
     const order = [...draftOrder]
