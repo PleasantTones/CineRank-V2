@@ -13,12 +13,29 @@ export default function MyMovies() {
   const allMovies = getAllMovies(dynamicMovies)
   const [tab, setTab] = useState('rankings') // rankings | seen | unseen
   const [search, setSearch] = useState('')
+  const [seasonFilter, setSeasonFilter] = useState('all')
 
   const pd = player ? players[player] : null
   const ratings = pd?.ratings ?? {}
 
-  const seen = [...allMovies].filter(m => !ratings[m.id]?.unseen).sort((a,b) => a.title.localeCompare(b.title))
-  const unseen = [...allMovies].filter(m => ratings[m.id]?.unseen).sort((a,b) => a.title.localeCompare(b.title))
+  // Build season list from dynamic movies (hardcoded movies have no season)
+  const availableSeasons = ['all', ...new Set(
+    dynamicMovies.filter(m => m.season).map(m => m.season)
+  )].filter(Boolean)
+
+  const SEASON_LABELS = {
+    'all': 'All Seasons',
+    '2025-winter': '2025 Winter', '2025-summer': '2025 Summer', '2025-fall': '2025 Fall',
+    '2026-winter': '2026 Winter', '2026-summer': '2026 Summer', '2026-fall': '2026 Fall',
+  }
+
+  // Apply season filter — hardcoded movies (no season field) always show in "all"
+  const visibleMovies = seasonFilter === 'all'
+    ? allMovies
+    : allMovies.filter(m => m.season === seasonFilter)
+
+  const seen = [...visibleMovies].filter(m => !ratings[m.id]?.unseen).sort((a,b) => a.title.localeCompare(b.title))
+  const unseen = [...visibleMovies].filter(m => ratings[m.id]?.unseen).sort((a,b) => a.title.localeCompare(b.title))
   const ranked = [...seen]
     .filter(m => ratings[m.id]?.matches > 0)
     .sort((a, b) => ratings[b.id].elo - ratings[a.id].elo)
@@ -43,7 +60,7 @@ export default function MyMovies() {
         {/* Stats strip */}
         <div className="grid grid-cols-3 gap-2">
           {[
-            { label: 'Seen', value: seen.length },
+            { label: seasonFilter === 'all' ? 'Seen' : 'Seen (filtered)', value: seen.length },
             { label: 'Voted', value: pd?.matchCount ?? 0 },
             { label: 'Top ELO', value: ranked[0] ? ratings[ranked[0].id].elo : '—' },
           ].map(s => (
@@ -53,6 +70,22 @@ export default function MyMovies() {
             </div>
           ))}
         </div>
+
+        {/* Season filter */}
+        {availableSeasons.length > 1 && (
+          <div className="flex items-center gap-2">
+            <span className="text-[11px] text-ink-muted flex-shrink-0">Season</span>
+            <select
+              value={seasonFilter}
+              onChange={e => setSeasonFilter(e.target.value)}
+              className="flex-1 text-xs font-semibold bg-surface border border-border rounded-xl px-3 py-2 text-ink-primary focus:outline-none focus:border-gold cursor-pointer"
+            >
+              {availableSeasons.map(s => (
+                <option key={s} value={s}>{SEASON_LABELS[s] || s}</option>
+              ))}
+            </select>
+          </div>
+        )}
 
         {/* Taste profile */}
         {ranked.length >= 5 && (() => {

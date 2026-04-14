@@ -7,6 +7,16 @@ const TMDB_BASE = 'https://api.themoviedb.org/3'
 const TMDB_IMG  = 'https://image.tmdb.org/t/p/w185'
 const OMDB_KEY  = 'd749e3a3'
 
+// Date ranges for each season (matching Fantasy Box Office calendar)
+const SEASON_DATES = {
+  '2025-winter': { start: '2025-01-01', end: '2025-04-30' },
+  '2025-summer': { start: '2025-05-01', end: '2025-08-31' },
+  '2025-fall':   { start: '2025-09-01', end: '2025-12-31' },
+  '2026-winter': { start: '2026-01-01', end: '2026-04-30' },
+  '2026-summer': { start: '2026-05-01', end: '2026-08-31' },
+  '2026-fall':   { start: '2026-09-01', end: '2026-12-31' },
+}
+
 const SEASONS = [
   { id: '2025-winter', label: '2025 Winter (Jan–Apr)' },
   { id: '2025-summer', label: '2025 Summer (May–Aug)' },
@@ -36,6 +46,8 @@ export default function Admin() {
   const [totalPages, setTotalPages] = useState(1)
   const [searchQuery, setSearchQuery] = useState('')
   const [searching, setSearching] = useState(false)
+  const [bulkLoading, setBulkLoading] = useState(false)
+  const [bulkProgress, setBulkProgress] = useState('')
 
   // Load current season movies from Supabase
   const loadSeasonMovies = useCallback(async () => {
@@ -93,6 +105,75 @@ export default function Admin() {
       return data.imdb_id || null
     } catch { return null }
   }
+
+  // Bulk load all wide US releases for a season date range
+  const bulkLoadSeason = useCallback(async () => {
+    if (!apiKey) return
+    const dates = SEASON_DATES[season]
+    if (!dates) return
+    setBulkLoading(true)
+    setBulkProgress('Fetching movies from TMDB…')
+    setError('')
+
+    try {
+      // Fetch all pages of wide US releases in the date range
+      let allMovies = []
+      let page = 1
+      let totalPages = 1
+
+      while (page <= totalPages && page <= 10) {  // cap at 10 pages (~200 movies)
+        setBulkProgress(`Fetching page ${page}${totalPages > 1 ? ` of ${totalPages}` : ''}…`)
+        const res = await fetch(
+          `${TMDB_BASE}/discover/movie?api_key=${apiKey}&language=en-US&region=US` +
+          `&release_date.gte=${dates.start}&release_date.lte=${dates.end}` +
+          `&with_release_type=3&sort_by=release_date.asc&page=${page}`
+        )
+        const data = await res.json()
+        if (data.status_message) throw new Error(data.status_message)
+        allMovies = [...allMovies, ...(data.results || [])]
+        totalPages = Math.min(data.total_pages || 1, 10)
+        page++
+      }
+
+      // Filter out movies already added
+      const alreadyAdded = new Set(seasonMovies.map(m => m.tmdb_id))
+      const toAdd = allMovies.filter(m => !alreadyAdded.has(String(m.id)))
+
+      if (toAdd.length === 0) {
+        setBulkProgress('All movies already added!')
+        setBulkLoading(false)
+        return
+      }
+
+      setBulkProgress(`Adding ${toAdd.length} movies…`)
+
+      // Fetch IMDB IDs and insert all — batched to avoid rate limiting
+      let added = 0
+      for (const m of toAdd) {
+        setBulkProgress(`Adding ${++added}/${toAdd.length}: ${m.title}`)
+        const imdbId = await getImdbId(m.id)
+        const newId = nextMovieId([...seasonMovies, ...toAdd.slice(0, added - 1).map((_, i) => ({ id: `M${9000 + i}` }))])
+        await sbFetch('/rest/v1/season_movies', {
+          method: 'POST', prefer: 'resolution=merge-duplicates',
+          body: JSON.stringify({
+            id: newId, title: m.title,
+            imdb_id: imdbId, tmdb_id: String(m.id),
+            release_date: m.release_date || null,
+            season, active: true,
+          }),
+        })
+        // Small delay to avoid hammering TMDB rate limits
+        await new Promise(r => setTimeout(r, 120))
+      }
+
+      setBulkProgress(`✅ Added ${toAdd.length} movies for ${season}!`)
+      await loadSeasonMovies()
+    } catch(e) {
+      setError('Bulk load failed: ' + e.message)
+      setBulkProgress('')
+    }
+    setBulkLoading(false)
+  }, [apiKey, season, seasonMovies, loadSeasonMovies])
 
   // Add a TMDB movie to the season
   const addMovie = async (tmdbMovie) => {
@@ -198,6 +279,25 @@ CREATE POLICY "d" ON season_movies FOR DELETE USING (true);`}</pre>
             {SEASONS.map(s => <option key={s.id} value={s.id}>{s.label}</option>)}
           </select>
         </div>
+
+        {/* Bulk Load Season */}
+        {apiKey && (
+          <div className="bg-surface border border-border rounded-2xl p-4">
+            <p className="text-xs font-bold text-ink-muted uppercase tracking-widest mb-1">Load Entire Season</p>
+            <p className="text-[11px] text-ink-muted mb-3">
+              Pulls all wide US releases from TMDB for the selected season date range and adds them in one shot.
+            </p>
+            <button onClick={bulkLoadSeason} disabled={bulkLoading || !apiKey}
+              className="w-full py-3 bg-gold text-black font-black rounded-xl text-sm disabled:opacity-50 disabled:cursor-not-allowed">
+              {bulkLoading ? '⏳ Loading…' : '⚡ Auto-Load All Season Movies'}
+            </button>
+            {bulkProgress && (
+              <p className={`text-[11px] mt-2 text-center font-medium ${bulkProgress.startsWith('✅') ? 'text-win' : 'text-gold'}`}>
+                {bulkProgress}
+              </p>
+            )}
+          </div>
+        )}
 
         {/* Search */}
         {apiKey && (
