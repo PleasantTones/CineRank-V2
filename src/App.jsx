@@ -42,7 +42,7 @@ class HallErrorBoundary extends React.Component {
 
 export default function App() {
   const location = useLocation()
-  const { player, players, loadAllFromDB } = useStore()
+  const { player, players } = useStore()
   const isHall = location.pathname === '/hall'
 
   const [dbLoaded, setDbLoaded] = useState(false)
@@ -103,7 +103,7 @@ export default function App() {
             h2hHistory: {},
           }
         })
-        loadAllFromDB(allData)
+        useStore.getState().loadAllFromDB(allData)
       } catch(e) {
         console.error('[CineRank] Load error:', e)
       } finally {
