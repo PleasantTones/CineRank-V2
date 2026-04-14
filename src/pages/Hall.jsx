@@ -51,11 +51,14 @@ export default function Hall() {
     renderer.toneMapping = THREE.ACESFilmicToneMapping
     renderer.toneMappingExposure = 1.15
 
+    // Mobile detection
+    const isMobile = window.innerWidth < 768
+
     // Size renderer properly
     function resize() {
       const W = window.innerWidth, H = window.innerHeight
       renderer.setSize(W, H)
-      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5))
+      renderer.setPixelRatio(1)  // Always 1 — retina kills mobile GPU
       camera.aspect = W / H
       camera.updateProjectionMatrix()
     }
@@ -64,7 +67,7 @@ export default function Hall() {
     // ── Scene ─────────────────────────────────────────────────────────────────
     const scene = new THREE.Scene()
     scene.background = new THREE.Color(0x0d0b08)
-    scene.fog = new THREE.FogExp2(0x0d0b08, 0.028)
+    scene.fog = new THREE.FogExp2(0x0d0b08, isMobile ? 0.045 : 0.028)  // denser fog on mobile = less visible geometry
 
     // ── Camera ────────────────────────────────────────────────────────────────
     const camera = new THREE.PerspectiveCamera(68, 1, 0.1, 55)
@@ -79,19 +82,20 @@ export default function Hall() {
       t.repeat.set(rx, ry)
       return t
     }
-    const tFloor   = canvasTex(makeMarbleTexture(512,512,{baseColor:[200,188,165],veinColor:[160,125,65],veinCount:8}), 6, 30)
-    const tWall    = canvasTex(makeMarbleTexture(512,512,{baseColor:[228,216,192],veinColor:[185,148,80],veinCount:5}), 1, 1)
-    const tCeiling = canvasTex(makeMarbleTexture(512,512,{baseColor:[218,208,185],veinCount:3}), 3, 12)
-    const tGold    = canvasTex(makeGoldTexture(256,256), 1, 1)
-    const tFresco  = new THREE.CanvasTexture(makeFrescoTexture(1024,512))
+    const texSize = isMobile ? 256 : 512
+    const tFloor   = canvasTex(makeMarbleTexture(texSize,texSize,{baseColor:[200,188,165],veinColor:[160,125,65],veinCount:isMobile?4:8}), 6, 30)
+    const tWall    = canvasTex(makeMarbleTexture(texSize,texSize,{baseColor:[228,216,192],veinColor:[185,148,80],veinCount:isMobile?3:5}), 1, 1)
+    const tCeiling = canvasTex(makeMarbleTexture(texSize,texSize,{baseColor:[218,208,185],veinCount:isMobile?2:3}), 3, 12)
+    const tGold    = canvasTex(makeGoldTexture(128,128), 1, 1)
+    const tFresco  = new THREE.CanvasTexture(makeFrescoTexture(isMobile?512:1024,isMobile?256:512))
 
     // ── Materials ─────────────────────────────────────────────────────────────
-    const mWall    = new THREE.MeshLambertMaterial({ map: tWall })
-    const mFloor   = new THREE.MeshLambertMaterial({ map: tFloor })
-    const mCeiling = new THREE.MeshLambertMaterial({ map: tCeiling })
-    const mGold    = new THREE.MeshLambertMaterial({ map: tGold, color: 0xD4A840 })
-    const mDark    = new THREE.MeshLambertMaterial({ color: 0x0a0804 })
-    const mFresco  = new THREE.MeshLambertMaterial({ map: tFresco })
+    const mWall    = new THREE.MeshBasicMaterial({ map: tWall })
+    const mFloor   = new THREE.MeshBasicMaterial({ map: tFloor })
+    const mCeiling = new THREE.MeshBasicMaterial({ map: tCeiling })
+    const mGold    = new THREE.MeshBasicMaterial({ map: tGold, color: 0xD4A840 })
+    const mDark    = new THREE.MeshBasicMaterial({ color: 0x0a0804 })
+    const mFresco  = new THREE.MeshBasicMaterial({ map: tFresco })
 
     function add(geo, mat, x, y, z, rx=0, ry=0, rz=0) {
       const m = new THREE.Mesh(geo, mat)
@@ -112,14 +116,23 @@ export default function Hall() {
     add(new THREE.PlaneGeometry(HL+10, HH), mWall, -HW, HH/2, cz, 0, Math.PI/2)
     // Right wall (faces -X = inward)
     add(new THREE.PlaneGeometry(HL+10, HH), mWall, HW, HH/2, cz, 0, -Math.PI/2)
-    // Back wall (faces +Z = toward player start)
-    add(new THREE.PlaneGeometry(HW*2, HH), mWall, 0, HH/2, -10, 0, 0)
-    // End wall (faces -Z = toward player)
-    add(new THREE.PlaneGeometry(HW*2, HH), mWall, 0, HH/2, HL-5, 0, Math.PI)
+    // Door dimensions (shared by back, end, and arch walls)
+    const dw = 1.1    // door half-width
+    const dh = 2.8    // door height
+    const panW = HW - dw  // side panel width
+    add(new THREE.PlaneGeometry(panW, HH), mWall, -(dw + panW/2), HH/2, -10, 0, 0)  // left
+    add(new THREE.PlaneGeometry(panW, HH), mWall,  (dw + panW/2), HH/2, -10, 0, 0)  // right
+    add(new THREE.PlaneGeometry(dw*2, HH-dh), mWall, 0, dh+(HH-dh)/2, -10, 0, 0)   // top
+    // End wall with doorway (Grand Finale entrance)
+    add(new THREE.PlaneGeometry(panW, HH), mWall, -(dw + panW/2), HH/2, HL-5, 0, Math.PI)
+    add(new THREE.PlaneGeometry(panW, HH), mWall,  (dw + panW/2), HH/2, HL-5, 0, Math.PI)
+    add(new THREE.PlaneGeometry(dw*2, HH-dh), mWall, 0, dh+(HH-dh)/2, HL-5, 0, Math.PI)
 
-    // Ceiling fresco panels
-    for (let z = 0; z < HL-5; z += 10) {
-      add(new THREE.PlaneGeometry(HW*1.5, 7), mFresco, 0, HH-0.02, z, Math.PI/2, Math.PI)
+    // Ceiling fresco panels (desktop only — texture cost too high on mobile)
+    if (!isMobile) {
+      for (let z = 0; z < HL-5; z += 10) {
+        add(new THREE.PlaneGeometry(HW*1.5, 7), mFresco, 0, HH-0.02, z, Math.PI/2, Math.PI)
+      }
     }
 
     // Crown molding strips (gold, along walls at ceiling)
@@ -134,17 +147,16 @@ export default function Hall() {
 
     // ── Transverse arch walls ─────────────────────────────────────────────────
     function archWall(z) {
-      const ry = Math.PI
-      // Left panel
-      add(new THREE.PlaneGeometry((HW - 0.9)*2, HH), mWall, -(HW+0.9)/2, HH/2, z, 0, ry)
-      // Right panel
-      add(new THREE.PlaneGeometry((HW - 0.9)*2, HH), mWall,  (HW+0.9)/2, HH/2, z, 0, ry)
-      // Top
-      add(new THREE.PlaneGeometry(HW*2, HH*0.35), mWall, 0, HH - HH*0.175 + 0.05, z, 0, ry)
-      // Gold arch frame edges
-      add(new THREE.PlaneGeometry(0.12, HH), mGold, -0.9, HH/2, z, 0, ry)
-      add(new THREE.PlaneGeometry(0.12, HH), mGold,  0.9, HH/2, z, 0, ry)
-      add(new THREE.PlaneGeometry(1.92, 0.1), mGold, 0, HH*0.65, z, 0, ry)
+      // Arch wall rendered on BOTH sides so visible from both directions
+      for (const ry of [0, Math.PI]) {
+        const aw = HW - 1.0  // panel width each side
+        add(new THREE.PlaneGeometry(aw, HH), mWall, -(HW - aw/2), HH/2, z, 0, ry)
+        add(new THREE.PlaneGeometry(aw, HH), mWall,  (HW - aw/2), HH/2, z, 0, ry)
+        add(new THREE.PlaneGeometry(2.0, HH - 2.9), mWall, 0, 2.9+(HH-2.9)/2, z, 0, ry)
+        add(new THREE.PlaneGeometry(0.1, HH), mGold, -1.0, HH/2, z, 0, ry)
+        add(new THREE.PlaneGeometry(0.1, HH), mGold,  1.0, HH/2, z, 0, ry)
+        add(new THREE.PlaneGeometry(2.1, 0.08), mGold, 0, 2.9, z, 0, ry)
+      }
     }
     archWall(0); archWall(32); archWall(62); archWall(75)
 
@@ -152,28 +164,31 @@ export default function Hall() {
     const colGeo = new THREE.CylinderGeometry(0.16, 0.2, HH - 0.4, 10)
     const capGeo = new THREE.CylinderGeometry(0.25, 0.16, 0.18, 10)
     const baseGeo= new THREE.CylinderGeometry(0.22, 0.25, 0.12, 10)
-    const mCol   = new THREE.MeshLambertMaterial({ map: tWall })
+    const mCol   = new THREE.MeshBasicMaterial({ map: tWall })
 
-    for (let z = 4; z < HL - 6; z += 9) {
-      for (const x of [-HW + 0.2, HW - 0.2]) {
-        add(colGeo,  mCol,  x, HH/2 - 0.2, z)
-        add(capGeo,  mGold, x, HH - 0.28, z)
-        add(baseGeo, mGold, x, 0.06, z)
+    // Columns: skip on mobile, every 18 units on desktop
+    if (!isMobile) {
+      for (let z = 4; z < HL - 6; z += 18) {
+        for (const x of [-HW + 0.2, HW - 0.2]) {
+          add(colGeo, mCol, x, HH/2 - 0.2, z)
+          add(capGeo, mGold, x, HH - 0.28, z)
+          add(baseGeo, mGold, x, 0.06, z)
+        }
       }
     }
 
     // ── Chandeliers ───────────────────────────────────────────────────────────
-    const chandGeo  = new THREE.SphereGeometry(0.16, 8, 6)
-    const ringGeo   = new THREE.TorusGeometry(0.26, 0.03, 6, 16)
-    const chandMat  = new THREE.MeshLambertMaterial({ color: 0xEEF4FF, transparent: true, opacity: 0.88 })
+    const chandGeo  = isMobile ? new THREE.CylinderGeometry(0.12, 0.16, 0.28, 6) : new THREE.SphereGeometry(0.16, 8, 6)
+    const ringGeo   = new THREE.TorusGeometry(0.26, 0.03, 4, 12)
+    const chandMat  = new THREE.MeshBasicMaterial({ color: 0xDDEEFF })
 
     const lights = []
-    for (let z = 2; z < HL - 6; z += 9) {
+    for (let z = 2; z < HL - 6; z += 18) {  // every 18 units = half as many lights
       const cy = HH - 0.35
       add(chandGeo, chandMat, 0, cy, z)
       add(ringGeo, mGold, 0, cy - 0.15, z, Math.PI/2)
-      // Chain
-      add(new THREE.CylinderGeometry(0.015, 0.015, 0.55, 4), mGold, 0, HH - 0.06, z)
+      // Chain (desktop only)
+      if (!isMobile) add(new THREE.CylinderGeometry(0.015, 0.015, 0.55, 4), mGold, 0, HH - 0.06, z)
 
       const pl = new THREE.PointLight(0xFFEDD0, 1.6, 13, 1.8)
       pl.position.set(0, cy - 0.2, z)
@@ -235,10 +250,7 @@ export default function Hall() {
       })
       const painting = add(new THREE.PlaneGeometry(pw, ph), canvasMat, px + (side<0?0.01:-0.01), y, z, 0, ry)
 
-      // Point light on painting
-      const pl = new THREE.PointLight(0xFFF5E0, 0.7, 3.5, 2)
-      pl.position.set(px + side*(-0.9), y+0.8, z)
-      scene.add(pl)
+      // Per-painting lights removed for performance
 
       const obj = { painting, frame, movieId, px, y, z, side, loaded: false }
       paintings.push(obj)
@@ -278,17 +290,20 @@ export default function Hall() {
     })
 
     // Gallery of Champions
-    allMovies.slice(0,14).forEach((m,i) => addPainting(m.id, i%2===0?-1:1, 10+i*1.8))
+    const galleryCount = isMobile ? 8 : 14
+    allMovies.slice(0,galleryCount).forEach((m,i) => addPainting(m.id, i%2===0?-1:1, 10+i*1.8))
 
     // Inner Sanctum — controversial
     const controversial = [...MOVIES].map(m => {
       const elos = PLAYERS.map(p=>players[p]?.ratings?.[m.id]).filter(r=>r?.matches>0).map(r=>r.elo)
       return {m, sp: elos.length>=2 ? Math.max(...elos)-Math.min(...elos) : 0}
     }).sort((a,b)=>b.sp-a.sp).slice(0,10)
-    controversial.forEach(({m},i) => addPainting(m.id, i%2===0?-1:1, 34+i*2.6))
+    const sanctumCount = isMobile ? 5 : 10
+    controversial.slice(0,sanctumCount).forEach(({m},i) => addPainting(m.id, i%2===0?-1:1, 34+i*2.6))
 
     // Vault
-    allMovies.slice(0,8).forEach((m,i) => addPainting(m.id, i%2===0?-1:1, 63+i*1.6))
+    const vaultCount = isMobile ? 4 : 8
+    allMovies.slice(0,vaultCount).forEach((m,i) => addPainting(m.id, i%2===0?-1:1, 63+i*1.6))
 
     // Grand Finale — large end wall portrait
     if (allMovies[0]) {
@@ -404,12 +419,18 @@ export default function Hall() {
 
     // ── Game loop ─────────────────────────────────────────────────────────────
     let frame = 0
+    let lastTime = 0
+    const targetFPS = isMobile ? 30 : 60
+    const frameDuration = 1000 / targetFPS
     const pos = camera.position
     const fwd = new THREE.Vector3()
     const rgt = new THREE.Vector3()
 
-    function loop() {
+    function loop(timestamp) {
       rafRef.current = requestAnimationFrame(loop)
+      // Frame rate cap — skip frame if too soon
+      if (timestamp - lastTime < frameDuration) return
+      lastTime = timestamp
       frame++
 
       // Apply rotation
