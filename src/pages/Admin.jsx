@@ -208,6 +208,8 @@ export default function Admin() {
         season,
         active: true,
       }
+      // Also save poster_path from TMDB so posters work without API calls at runtime
+      row.poster_path = tmdbMovie.poster_path || null
       await sbFetch('/rest/v1/season_movies', {
         method: 'POST',
         prefer: 'resolution=merge-duplicates',

@@ -144,7 +144,7 @@ export default function Vote() {
   const pd = player ? players[player] : null
   const pair = useMemo(
     () => pd ? pickPair(pd.ratings, pd.playedPairs, allMovies) : null,
-    [pd?.playedPairs?.length, voteCount]
+    [pd?.playedPairs?.length, voteCount, allMovies.length]  // allMovies.length triggers recompute when season movies load
   )
 
   const seenCount = pd ? allMovies.filter(m => !pd.ratings[m.id]?.unseen).length : 0

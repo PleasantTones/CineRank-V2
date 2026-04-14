@@ -93,11 +93,9 @@ export default function App() {
 
         // Load dynamic season movies AFTER loadAllFromDB so unseen:true sticks
         try {
-          const seasonMovies = await sbFetch('/rest/v1/season_movies?select=*&active=eq.true&order=added_at.asc') || []
-          if (seasonMovies.length > 0) {
-            useStore.getState().loadDynamicMovies(seasonMovies)
-            console.log('[CineRank] Loaded', seasonMovies.length, 'season movies (defaulting to unseen)')
-          }
+          const seasonMovies = await sbFetch('/rest/v1/season_movies?select=*&order=added_at.asc') || []
+          useStore.getState().loadDynamicMovies(seasonMovies)
+          console.log('[CineRank] Loaded', seasonMovies.length, 'season movies')
         } catch(e) { console.warn('[CineRank] No season_movies table yet') }
       } catch(e) {
         console.error('[CineRank] Load error:', e)

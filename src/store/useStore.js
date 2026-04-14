@@ -72,7 +72,8 @@ export const useStore = create((set, get) => ({
     const dynamic = (rows || []).map(r => ({
       id: r.id,
       title: r.title,
-      img: null,    // no thumbnail — OMDB poster loads from imdb_id
+      // TMDB CDN is public — use stored poster_path directly, no API key needed
+      img: r.poster_path ? `https://image.tmdb.org/t/p/w342${r.poster_path}` : null,
       imdbId: r.imdb_id,
       tmdbId: r.tmdb_id,
       releaseDate: r.release_date,
