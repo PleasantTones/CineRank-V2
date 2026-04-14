@@ -187,7 +187,7 @@ export default function Hall() {
     // ── Chandeliers ───────────────────────────────────────────────────────────
     const chandGeo  = isMobile ? new THREE.CylinderGeometry(0.12, 0.16, 0.28, 6) : new THREE.SphereGeometry(0.16, 8, 6)
     const ringGeo   = new THREE.TorusGeometry(0.26, 0.03, 4, 12)
-    const chandMat  = new THREE.MeshBasicMaterial({ color: 0xDDEEFF })
+    const chandMat  = new THREE.MeshStandardMaterial({ color: 0xEEF6FF, roughness: 0.02, metalness: 0.0, transparent: true, opacity: 0.82 })
 
     const lights = []
     for (let z = 4; z < HL - 6; z += 20) {  // every 20 units = 4 lights
@@ -371,8 +371,8 @@ export default function Hall() {
       ctx.fillStyle='#C8A040'; ctx.font='bold 20px Inter,sans-serif'; ctx.textAlign='center'
       ctx.fillText(text,256,47)
       const mat = new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(c), transparent: true, depthWrite:false })
-      add(new THREE.PlaneGeometry(1.9, 0.3), mat, 0, HH-0.42, z, 0, Math.PI)
-      add(new THREE.PlaneGeometry(2.0, 0.38), mGold, 0, HH-0.42, z+0.01, 0, Math.PI)
+      add(new THREE.PlaneGeometry(1.9, 0.3), mat, 0, HH-1.0, z, 0, Math.PI)
+      add(new THREE.PlaneGeometry(2.0, 0.38), mGold, 0, HH-1.0, z+0.01, 0, Math.PI)
     }
     plaque('GODS OF OLYMPUS', -2)
     plaque('GALLERY OF CHAMPIONS', 18)

@@ -71,12 +71,13 @@ export function makeGoldTexture(w = 256, h = 256) {
   canvas.width = w; canvas.height = h
   const ctx = canvas.getContext('2d')
   const g = ctx.createLinearGradient(0, 0, w, h)
-  g.addColorStop(0,   '#F5D880')
-  g.addColorStop(0.2, '#C8A040')
-  g.addColorStop(0.4, '#E8C860')
-  g.addColorStop(0.6, '#A07820')
-  g.addColorStop(0.8, '#D4A840')
-  g.addColorStop(1,   '#F0C040')
+  g.addColorStop(0,   '#FFE066')
+  g.addColorStop(0.15, '#C8880A')
+  g.addColorStop(0.35, '#FFD040')
+  g.addColorStop(0.5, '#9A6800')
+  g.addColorStop(0.65, '#FFD84A')
+  g.addColorStop(0.85, '#B88A10')
+  g.addColorStop(1,   '#FFE054')
   ctx.fillStyle = g
   ctx.fillRect(0, 0, w, h)
   // Subtle noise
