@@ -40,6 +40,16 @@ export default function Hall() {
   const collectedSet = useRef(new Set(collected))
   useEffect(() => { collectedSet.current = new Set(collected) }, [collected])
 
+  // Compute ranked movies from live globalRatings — used to populate paintings
+  const rankedMovies = React.useMemo(() => {
+    const ranked = [...MOVIES]
+      .filter(m => globalRatings[m.id]?.matches > 0)
+      .sort((a, b) => globalRatings[b.id].elo - globalRatings[a.id].elo)
+    return ranked.length ? ranked : [...MOVIES]
+  }, [globalRatings])
+
+  const hasRealData = Object.values(globalRatings).some(r => r.matches > 0)
+
   useEffect(() => {
     const canvas = canvasRef.current
     if (!canvas) return
@@ -180,7 +190,7 @@ export default function Hall() {
 
     // Columns: skip on mobile, every 18 units on desktop
     if (!isMobile) {
-      for (let z = 4; z < HL - 6; z += 24) {  // fewer columns = fewer draw calls
+      for (const z of [-8, 7, 77]) {  // entry arch pair, mid-entry, finale entrance
         for (const x of [-HW + 0.2, HW - 0.2]) {
           add(colGeo, mCol, x, HH/2 - 0.2, z)
           add(capGeo, mGold, x, HH - 0.28, z)
@@ -202,25 +212,22 @@ export default function Hall() {
       // Chain (desktop only)
       if (!isMobile) add(new THREE.CylinderGeometry(0.015, 0.015, 0.55, 4), mGold, 0, HH - 0.06, z)
 
-      const pl = new THREE.PointLight(0xFFCC60, 3.8, 20, 1.4)  // stronger warm pools like target
+      const pl = new THREE.PointLight(0xFFE8A0, 2.8, 18, 1.5)  // warmer but less overwhelming
       pl.position.set(0, cy - 0.2, z)
       scene.add(pl)
       lights.push(pl)
     }
 
     // ── Lighting ──────────────────────────────────────────────────────────────
-    scene.add(new THREE.AmbientLight(0xFFF8F0, 0.22))  // very low ambient = chandelier glow dominates
-    const dir = new THREE.DirectionalLight(0xFFF5E8, 0.35)
+    scene.add(new THREE.AmbientLight(0xFFF8F0, 0.35))  // balanced ambient
+    const dir = new THREE.DirectionalLight(0xFFF8F0, 0.55)
     dir.position.set(0, 8, 20)
     scene.add(dir)
     // fill light removed for performance
 
     // ── Paintings ─────────────────────────────────────────────────────────────
     const paintings = []
-    const ranked = [...MOVIES]
-      .filter(m => globalRatings[m.id]?.matches > 0)
-      .sort((a, b) => globalRatings[b.id].elo - globalRatings[a.id].elo)
-    const allMovies = ranked.length ? ranked : [...MOVIES]
+    const allMovies = rankedMovies  // use pre-computed ranked list from store
 
     const PW = 1.1, PH = 1.65
 
@@ -304,7 +311,7 @@ export default function Hall() {
 
     // Gallery of Champions
     const galleryCount = isMobile ? 8 : 14
-    allMovies.slice(0,galleryCount).forEach((m,i) => addPainting(m.id, i%2===0?-1:1, 10+i*1.8))
+    allMovies.slice(0,galleryCount).forEach((m,i) => addPainting(m.id, i%2===0?-1:1, 12+i*1.8))
 
     // Inner Sanctum — controversial
     const controversial = [...MOVIES].map(m => {
@@ -312,7 +319,7 @@ export default function Hall() {
       return {m, sp: elos.length>=2 ? Math.max(...elos)-Math.min(...elos) : 0}
     }).sort((a,b)=>b.sp-a.sp).slice(0,10)
     const sanctumCount = isMobile ? 5 : 10
-    controversial.slice(0,sanctumCount).forEach(({m},i) => addPainting(m.id, i%2===0?-1:1, 34+i*2.6))
+    controversial.slice(0,sanctumCount).forEach(({m},i) => addPainting(m.id, i%2===0?-1:1, 36+i*2.6))
 
     // Vault
     const vaultCount = isMobile ? 4 : 8
@@ -330,25 +337,26 @@ export default function Hall() {
       scene.add(pl2)  // PointLight cheaper than SpotLight
 
       const cached = getCachedPoster(king.id)
-      function applyKing(url) {
-        const src = url || king.img  // always fallback to base64
-        const img = new Image(); img.crossOrigin = 'anonymous'
+      // Show title canvas immediately, upgrade to poster when ready
+      const fallbackCanvas = makeFallback(king.title, '#C8A040')
+      kingMat.map = new THREE.CanvasTexture(fallbackCanvas)
+      kingMat.color.set(0xffffff); kingMat.needsUpdate = true
+
+      function applyKingUrl(url) {
+        if (!url) return
+        const img = new Image()
+        // Only set crossOrigin for http URLs, not data URLs
+        if (!url.startsWith('data:')) img.crossOrigin = 'anonymous'
         img.onload = () => {
-          const t = new THREE.Texture(img); t.colorSpace = THREE.SRGBColorSpace; t.needsUpdate = true
+          const t = new THREE.Texture(img)
+          t.colorSpace = THREE.SRGBColorSpace; t.needsUpdate = true
           kingMat.map = t; kingMat.color.set(0xffffff); kingMat.needsUpdate = true
         }
-        img.onerror = () => {
-          // Fallback to base64 if OMDB URL fails
-          if (src !== king.img) { img.src = king.img; return }
-          // If base64 also fails, show fallback canvas
-          kingMat.map = new THREE.CanvasTexture(makeFallback(king.title, null))
-          kingMat.color.set(0xffffff); kingMat.needsUpdate = true
-        }
-        img.src = src
+        img.src = url
       }
-      // Try OMDB first, fallback to base64 if not cached
-      if (cached) applyKing(cached)
-      else { applyKing(king.img); fetchPoster(king.id).then(url => { if(url) applyKing(url) }) }
+      // Load OMDB poster (already cached from prefetch)
+      if (cached) applyKingUrl(cached)
+      else fetchPoster(king.id).then(applyKingUrl)
 
       // Crown label
       const lc = document.createElement('canvas'); lc.width=512; lc.height=128
@@ -534,10 +542,15 @@ export default function Hall() {
       })
       renderer.dispose()
     }
-  }, [])
+  }, [rankedMovies, players])
 
   return (
     <div className="fixed inset-0 bg-black" style={{ zIndex: 100, touchAction: 'none' }}>
+      {!hasRealData && (
+        <div className="absolute inset-0 flex flex-col items-center justify-center z-10 pointer-events-none">
+          <div className="text-gold/60 text-sm font-semibold tracking-widest animate-pulse">LOADING HALL...</div>
+        </div>
+      )}
       <canvas ref={canvasRef} style={{ position:'absolute', inset:0, width:'100%', height:'100%' }} />
 
       <div ref={roomRef} className="absolute top-4 left-1/2 -translate-x-1/2 text-[11px] font-bold tracking-[0.25em] pointer-events-none whitespace-nowrap"

@@ -42,7 +42,7 @@ class HallErrorBoundary extends React.Component {
 
 export default function App() {
   const location = useLocation()
-  const { player, players, loadPlayerFromDB } = useStore()
+  const { player, players, loadAllFromDB } = useStore()
   const isHall = location.pathname === '/hall'
 
   const [dbLoaded, setDbLoaded] = useState(false)
@@ -89,14 +89,14 @@ export default function App() {
           if (m.winner_id) playerMatchups[m.player].h2hHistory[key] = m.winner_id
         })
 
-        // Load each player's ratings + matchup history
+        // Build allData for single atomic update
+        const allData = {}
         PLAYERS.forEach(p => {
           const playerRatings = (ratings || []).filter(r => r.player === p)
           const { playedPairs, h2hHistory } = playerMatchups[p]
-          if (playerRatings.length || playedPairs.length) {
-            loadPlayerFromDB(p, playerRatings, playedPairs, h2hHistory)
-          }
+          allData[p] = { rows: playerRatings, playedPairs, h2hHistory }
         })
+        loadAllFromDB(allData)
       } catch(e) { console.error('Load error:', e) }
       finally { setDbLoaded(true) }
     }

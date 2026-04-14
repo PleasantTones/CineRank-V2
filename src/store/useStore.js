@@ -87,7 +87,48 @@ export const useStore = create(
       collectPoster: (id) => set(s => ({ collected: s.collected.includes(id) ? s.collected : [...s.collected, id] })),
 
       // Load from DB (merge)
-      loadPlayerFromDB: (playerName, rows, playedPairs = [], h2hHistory = {}) => set(s => {
+      // Load ALL players at once in a single atomic state update
+      loadAllFromDB: (allData) => set(s => {
+        // allData = { [playerName]: { rows, playedPairs, h2hHistory } }
+        const newPlayers = { ...s.players }
+
+        Object.entries(allData).forEach(([playerName, { rows, playedPairs, h2hHistory }]) => {
+          const ratings = {}
+          MOVIES.forEach(m => { ratings[m.id] = { elo: 1000, wins: 0, losses: 0, matches: 0, unseen: false } })
+          ;(rows || []).forEach(r => {
+            if (ratings[r.movie_id]) {
+              ratings[r.movie_id] = { elo: r.elo, wins: r.wins, losses: r.losses, matches: r.matches, unseen: r.unseen || false }
+            }
+          })
+          const existing = s.players[playerName] || { ratings: {}, matchCount: 0, playedPairs: [], h2hHistory: {} }
+          const mergedPairs = [...new Set(playedPairs || [])]
+          newPlayers[playerName] = {
+            ...existing,
+            ratings,
+            playedPairs: mergedPairs,
+            matchCount: mergedPairs.length,
+            h2hHistory: { ...(existing.h2hHistory || {}), ...(h2hHistory || {}) },
+          }
+        })
+
+        // Rebuild globalRatings from ALL players at once
+        const global = {}
+        MOVIES.forEach(m => {
+          let eloSum = 0, eloCount = 0, wins = 0, losses = 0, matches = 0
+          PLAYERS.forEach(pl => {
+            const r = newPlayers[pl]?.ratings?.[m.id]
+            if (r && r.matches > 0) {
+              eloSum += r.elo; eloCount++
+              wins += r.wins; losses += r.losses; matches += r.matches
+            }
+          })
+          global[m.id] = { elo: eloCount > 0 ? Math.round(eloSum / eloCount) : 1000, wins, losses, matches }
+        })
+
+        return { players: newPlayers, globalRatings: global }
+      }),
+
+            loadPlayerFromDB: (playerName, rows, playedPairs = [], h2hHistory = {}) => set(s => {
         const ratings = initRatings()
         rows.forEach(r => {
           if (ratings[r.movie_id]) {
@@ -152,7 +193,7 @@ export const useStore = create(
           return {}
         }
       },
-      partialize: (s) => ({ player: s.player, players: s.players, collected: s.collected, muted: s.muted }),
+      partialize: (s) => ({ player: s.player, muted: s.muted }),  // only persist UI prefs — game data always loads from Supabase
     }
   )
 )
