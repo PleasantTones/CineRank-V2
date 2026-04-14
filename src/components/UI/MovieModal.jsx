@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useStore } from '../../store/useStore'
-import { MOVIES, IMDB_URLS } from '../../lib/movies'
+import { MOVIES, IMDB_URLS, getAllMovies, getImdbUrl } from '../../lib/movies'
+import { fetchTMDBFinancials, formatMoney, calcProfit, getTMDBKey } from '../../lib/tmdb'
 import PosterImage from './PosterImage'
 
 const OMDB_KEY = 'd749e3a3'
@@ -14,17 +15,20 @@ export default function MovieModal() {
   const [movieId, setMovieId] = useState(null)
   const [omdb, setOmdb] = useState(null)
   const [loading, setLoading] = useState(false)
-  const { player, players } = useStore()
+  const [tmdb, setTmdb] = useState(null)
+  const [tmdbLoading, setTmdbLoading] = useState(false)
 
   useEffect(() => {
-    openFn = (id) => { setMovieId(id); setOmdb(null) }
+    openFn = (id) => { setMovieId(id); setOmdb(null); setTmdb(null) }
     return () => { openFn = null }
   }, [])
 
-  const movie = movieId ? MOVIES.find(m => m.id === movieId) : null
+  const { player, players, dynamicMovies } = useStore()
+  const allMovies = getAllMovies(dynamicMovies)
+  const movie = movieId ? allMovies.find(m => m.id === movieId) : null
   const pd = player ? players[player] : null
   const rating = movie && pd ? pd.ratings[movie.id] : null
-  const imdbUrl = movieId ? IMDB_URLS[movieId] : null
+  const imdbUrl = movie ? (IMDB_URLS[movie.id] || (movie.imdbId ? 'https://www.imdb.com/title/' + movie.imdbId + '/' : null)) : null
 
   useEffect(() => {
     if (!movie) return
@@ -39,6 +43,17 @@ export default function MovieModal() {
       .then(d => { if (d.Response === 'True') { cache[movie.id] = d; setOmdb(d) } })
       .catch(() => {})
       .finally(() => setLoading(false))
+  }, [movie?.id])
+
+  // Fetch TMDB financials
+  useEffect(() => {
+    if (!movie) { setTmdb(null); return }
+    if (!getTMDBKey()) return
+    setTmdbLoading(true)
+    fetchTMDBFinancials(movie)
+      .then(d => setTmdb(d))
+      .catch(() => {})
+      .finally(() => setTmdbLoading(false))
   }, [movie?.id])
 
   const imdbRating = omdb?.imdbRating && omdb.imdbRating !== 'N/A' ? omdb.imdbRating : null
@@ -62,7 +77,7 @@ export default function MovieModal() {
             exit={{ opacity: 0, scale: 0.94, y: 16 }}
             transition={{ type: 'spring', stiffness: 420, damping: 32 }}
             className="w-full max-w-sm bg-surface rounded-2xl overflow-hidden border border-border relative"
-            style={{ maxHeight: '90dvh', display: 'flex', flexDirection: 'column' }}
+            style={{ maxHeight: '90dvh', maxWidth: '480px', width: '100%', display: 'flex', flexDirection: 'column' }}
           >
             {/* Close button */}
             <button
@@ -153,6 +168,54 @@ export default function MovieModal() {
                 </div>
               )}
             </div>
+
+            {/* Box Office / Financials */}
+            {(tmdb?.budget > 0 || tmdb?.revenue > 0 || tmdbLoading) && (
+              <div className="rounded-xl overflow-hidden border border-border">
+                <div className="px-4 py-2.5 flex items-center justify-between" style={{ background: '#111113' }}>
+                  <p className="text-[10px] font-bold text-ink-muted uppercase tracking-widest">Box Office</p>
+                  {tmdbLoading && <span className="text-[10px] text-ink-muted animate-pulse">Loading…</span>}
+                </div>
+                {tmdb && (
+                  <>
+                    {[
+                      { label: 'Production Budget', value: formatMoney(tmdb.budget), note: null },
+                      { label: 'Break-even (2× budget)', value: formatMoney(tmdb.budget * 2), note: 'incl. marketing' },
+                      { label: 'Worldwide Gross', value: formatMoney(tmdb.revenue), note: null },
+                    ].filter(x => x.value).map((x, i) => (
+                      <div key={x.label} className="flex items-center justify-between px-4 py-3 border-t border-border"
+                        style={{ background: i % 2 === 0 ? '#0e0e10' : '#111113' }}>
+                        <div>
+                          <p className="text-[11px] text-ink-muted">{x.label}</p>
+                          {x.note && <p className="text-[9px] text-ink-muted/60">{x.note}</p>}
+                        </div>
+                        <span className="text-sm font-bold font-mono text-ink-primary">{x.value}</span>
+                      </div>
+                    ))}
+                    {tmdb.budget > 0 && tmdb.revenue > 0 && (() => {
+                      const profit = tmdb.profit
+                      const isProfit = profit >= 0
+                      return (
+                        <div className="px-4 py-3 border-t border-border flex items-center justify-between"
+                          style={{ background: isProfit ? 'rgba(52,211,153,0.08)' : 'rgba(239,68,68,0.08)' }}>
+                          <p className="text-[11px] font-bold" style={{ color: isProfit ? '#34d399' : '#ef4444' }}>
+                            {isProfit ? '✅ Profit' : '❌ Loss'}
+                          </p>
+                          <span className="text-base font-black font-mono" style={{ color: isProfit ? '#34d399' : '#ef4444' }}>
+                            {isProfit ? '+' : ''}{formatMoney(profit)}
+                          </span>
+                        </div>
+                      )
+                    })()}
+                    {tmdb.status && tmdb.status !== 'Released' && (
+                      <div className="px-4 py-2 border-t border-border text-center">
+                        <span className="text-[10px] text-gold font-bold uppercase tracking-widest">{tmdb.status}</span>
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
+            )}
 
             {/* IMDb button */}
             {imdbUrl && (

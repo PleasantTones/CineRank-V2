@@ -4,11 +4,11 @@ import PageWrapper from '../components/UI/PageWrapper'
 import { openMovieModal } from '../components/UI/MovieModal'
 import { CardSkeleton } from '../components/UI/Skeleton'
 import { useStore } from '../store/useStore'
-import { MOVIES, PLAYERS, PLAYER_COLORS } from '../lib/movies'
+import { MOVIES, PLAYERS, PLAYER_COLORS, getAllMovies } from '../lib/movies'
 import PosterImage from '../components/UI/PosterImage'
 
-function getCompat(ratA, ratB) {
-  const both = MOVIES.filter(m => ratA[m.id]?.matches > 0 && ratB[m.id]?.matches > 0)
+function getCompat(ratA, ratB, movies) {
+  const both = movies.filter(m => ratA[m.id]?.matches > 0 && ratB[m.id]?.matches > 0)
   if (both.length < 3) return null
   const rankA = [...both].sort((a,b) => (ratB[b.id]?.elo||1000) - (ratB[a.id]?.elo||1000)).map(m => m.id)
   const rankB = [...both].sort((a,b) => (ratA[b.id]?.elo||1000) - (ratA[a.id]?.elo||1000)).map(m => m.id)
@@ -18,16 +18,17 @@ function getCompat(ratA, ratB) {
 }
 
 export default function Friends() {
-  const { players, globalRatings } = useStore()
+  const { players, globalRatings, dynamicMovies } = useStore()
+  const allMovies = getAllMovies(dynamicMovies)
 
   const compat = useMemo(() => {
     const map = {}
     PLAYERS.forEach(pa => PLAYERS.forEach(pb => {
       if (pa >= pb) return
-      map[`${pa}_${pb}`] = getCompat(players[pa]?.ratings ?? {}, players[pb]?.ratings ?? {})
+      map[`${pa}_${pb}`] = getCompat(players[pa]?.ratings ?? {}, players[pb]?.ratings ?? {}, allMovies)
     }))
     return map
-  }, [players])
+  }, [players, allMovies.length])
 
   const bestPair = useMemo(() => {
     let best = null, bestScore = -1
@@ -38,7 +39,7 @@ export default function Friends() {
   // Most controversial: highest ELO spread across players
   const controversialMovie = useMemo(() => {
     let maxSpread = 0, result = null
-    MOVIES.forEach(m => {
+    allMovies.forEach(m => {
       const elos = PLAYERS.map(p => players[p]?.ratings?.[m.id]).filter(r => r?.matches > 0).map(r => r.elo)
       if (elos.length >= 2) {
         const spread = Math.max(...elos) - Math.min(...elos)
@@ -49,12 +50,12 @@ export default function Friends() {
   }, [players])
 
   // Group agreement: does everyone's #1 match global #1?
-  const globalTop = [...MOVIES].filter(m => globalRatings[m.id]?.matches > 0)
+  const globalTop = [...allMovies].filter(m => globalRatings[m.id]?.matches > 0)
     .sort((a,b) => globalRatings[b.id].elo - globalRatings[a.id].elo)[0]
 
   const agreements = PLAYERS.map(p => {
     const r = players[p]?.ratings ?? {}
-    const top = [...MOVIES].filter(m => r[m.id]?.matches > 0).sort((a,b) => (r[b.id]?.elo||0) - (r[a.id]?.elo||0))[0]
+    const top = [...allMovies].filter(m => r[m.id]?.matches > 0).sort((a,b) => (r[b.id]?.elo||0) - (r[a.id]?.elo||0))[0]
     return { player: p, agrees: top && globalTop && top.id === globalTop.id }
   })
 
@@ -119,7 +120,7 @@ export default function Friends() {
             {PLAYERS.map((p, i) => {
               const pd = players[p]; const r = pd?.ratings ?? {}
               const voted = Object.values(r).filter(x => x.matches > 0).length
-              const top = [...MOVIES].filter(m => r[m.id]?.matches > 0).sort((a,b) => (r[b.id]?.elo||0)-(r[a.id]?.elo||0))[0]
+              const top = [...allMovies].filter(m => r[m.id]?.matches > 0).sort((a,b) => (r[b.id]?.elo||0)-(r[a.id]?.elo||0))[0]
               const totalW = Object.values(r).reduce((s,x) => s+(x.wins||0),0)
               const totalM = Object.values(r).reduce((s,x) => s+(x.matches||0),0)
               const wr = totalM > 0 ? Math.round(totalW/totalM*100) : 0

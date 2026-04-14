@@ -14,7 +14,7 @@ export default function PageWrapper({ children, className = '', scroll = true })
       initial="initial"
       animate="animate"
       exit="exit"
-      className={`h-full w-full ${scroll ? 'overflow-y-auto overscroll-contain no-scrollbar' : 'overflow-hidden'} ${className}`}
+      className={`h-full w-full min-h-0 ${scroll ? 'overflow-y-auto overscroll-contain no-scrollbar' : 'overflow-hidden'} ${className}`}
       style={{ WebkitOverflowScrolling: 'touch' }}
     >
       {children}

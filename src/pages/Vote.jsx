@@ -8,7 +8,7 @@ import { showToast } from '../components/UI/Toast'
 import { spawnConfetti } from '../components/UI/Confetti'
 import { playPop } from '../lib/sounds'
 import { useStore } from '../store/useStore'
-import { MOVIES } from '../lib/movies'
+import { MOVIES, getAllMovies } from '../lib/movies'
 import { pairKey } from '../lib/elo'
 import { sbFetch } from '../lib/supabase'
 
@@ -249,7 +249,7 @@ export default function Vote() {
   const [movieA, movieB] = pair
   const h2hKey = pairKey(movieA.id, movieB.id)
   const h2hWinnerId = pd?.h2hHistory?.[h2hKey]
-  const h2hWinner = h2hWinnerId ? MOVIES.find(m => m.id === h2hWinnerId)?.title : null
+  const h2hWinner = h2hWinnerId ? allMovies.find(m => m.id === h2hWinnerId)?.title : null
 
   return (
     <PageWrapper scroll={false} className="flex flex-col">
@@ -311,7 +311,7 @@ export default function Vote() {
           className="text-[11px] text-ink-muted border border-border rounded-lg px-3 py-2 hover:border-gold/30 hover:text-gold transition-all disabled:opacity-25">
           ↩ Undo
         </button>
-        <p className="text-[9px] text-ink-muted">Tap poster for details</p>
+        <p className="text-[9px] text-ink-muted hidden sm:block">Tap poster for details</p>
         <button onClick={handleSkip}
           className="text-[11px] text-ink-muted hover:text-ink-secondary transition-colors px-3 py-2">
           Skip →

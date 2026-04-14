@@ -160,7 +160,7 @@ export default function Admin() {
         <div className="bg-surface border border-border rounded-2xl p-4 mb-4">
           <p className="text-xs font-bold text-ink-muted uppercase tracking-widest mb-2">First-time setup</p>
           <p className="text-xs text-ink-muted mb-2">1. Run this SQL in your <a href="https://app.supabase.com" target="_blank" className="text-gold underline">Supabase dashboard</a> → SQL Editor:</p>
-          <pre className="text-[10px] bg-raised rounded-lg p-2 text-ink-secondary overflow-x-auto mb-3">{`CREATE TABLE IF NOT EXISTS season_movies (
+          <pre className="text-[10px] bg-raised rounded-lg p-2 text-ink-secondary overflow-x-auto mb-3 whitespace-pre">{`CREATE TABLE IF NOT EXISTS season_movies (
   id TEXT PRIMARY KEY,
   title TEXT NOT NULL,
   imdb_id TEXT, tmdb_id TEXT,

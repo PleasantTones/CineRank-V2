@@ -13,15 +13,15 @@ const SORTS = [
   { key: 'wr',      label: 'Win %'     },
 ]
 
-function useEloSnapshot(ratings) {
+function useEloSnapshot(ratings, movies) {
   const [snapshot] = useState(() => {
     try { return JSON.parse(localStorage.getItem('cinerank_lb_snapshot') || '{}') } catch { return {} }
   })
   useMemo(() => {
     const snap = {}
-    MOVIES.forEach(m => { snap[m.id] = ratings[m.id]?.elo ?? 1000 })
+    movies.forEach(m => { snap[m.id] = ratings[m.id]?.elo ?? 1000 })
     localStorage.setItem('cinerank_lb_snapshot', JSON.stringify(snap))
-  }, [])
+  }, [movies.length])
   return snapshot
 }
 
@@ -30,7 +30,7 @@ export default function Leaderboard() {
   const allMovies = getAllMovies(dynamicMovies)
   const [filter, setFilter] = useState('global') // 'global' or player name
   const [sort, setSort] = useState('elo')
-  const snapshot = useEloSnapshot(globalRatings)
+  const snapshot = useEloSnapshot(globalRatings, allMovies)
 
   // Compute global ratings directly from players if store hasn't populated it yet
   const computedGlobal = React.useMemo(() => {
@@ -44,7 +44,7 @@ export default function Leaderboard() {
       global[m.id] = { elo: eloCount > 0 ? Math.round(eloSum / eloCount) : 1000, wins, losses, matches }
     })
     return global
-  }, [players])
+  }, [players, allMovies.length])
 
   const effectiveGlobal = Object.values(globalRatings).some(r => r.matches > 0) ? globalRatings : computedGlobal
   const ratings = filter === 'global' ? effectiveGlobal : (players[filter]?.ratings ?? effectiveGlobal)
@@ -150,7 +150,7 @@ export default function Leaderboard() {
             No votes yet — start voting to see rankings!
           </div>
         ) : (
-          <div className="rounded-2xl border border-border overflow-hidden">
+          <div className="rounded-2xl border border-border overflow-hidden overflow-x-auto">
             {/* Table header */}
             <div className="grid text-[10px] font-bold text-ink-muted uppercase tracking-widest px-3 py-2.5 border-b border-border"
               style={{ gridTemplateColumns: '32px 36px 1fr 52px 52px 44px 52px', background: '#0e0e10' }}>

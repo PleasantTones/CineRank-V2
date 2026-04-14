@@ -5,19 +5,20 @@ import { openMovieModal } from '../components/UI/MovieModal'
 import { MovieListSkeleton } from '../components/UI/Skeleton'
 import { generateShareCard } from '../lib/shareCard'
 import { useStore } from '../store/useStore'
-import { MOVIES, PLAYER_COLORS } from '../lib/movies'
+import { MOVIES, PLAYER_COLORS, getAllMovies } from '../lib/movies'
 import PosterImage from '../components/UI/PosterImage'
 
 export default function MyMovies() {
-  const { player, players, markSeen, markUnseen } = useStore()
+  const { player, players, markSeen, markUnseen, dynamicMovies } = useStore()
+  const allMovies = getAllMovies(dynamicMovies)
   const [tab, setTab] = useState('rankings') // rankings | seen | unseen
   const [search, setSearch] = useState('')
 
   const pd = player ? players[player] : null
   const ratings = pd?.ratings ?? {}
 
-  const seen = [...MOVIES].filter(m => !ratings[m.id]?.unseen).sort((a,b) => a.title.localeCompare(b.title))
-  const unseen = [...MOVIES].filter(m => ratings[m.id]?.unseen).sort((a,b) => a.title.localeCompare(b.title))
+  const seen = [...allMovies].filter(m => !ratings[m.id]?.unseen).sort((a,b) => a.title.localeCompare(b.title))
+  const unseen = [...allMovies].filter(m => ratings[m.id]?.unseen).sort((a,b) => a.title.localeCompare(b.title))
   const ranked = [...seen]
     .filter(m => ratings[m.id]?.matches > 0)
     .sort((a, b) => ratings[b.id].elo - ratings[a.id].elo)
@@ -55,7 +56,7 @@ export default function MyMovies() {
 
         {/* Taste profile */}
         {ranked.length >= 5 && (() => {
-          const globalRanked = [...MOVIES].filter(m => (players[Object.keys(players)[0]]?.ratings?.[m.id]?.matches||0) > 0)
+          const globalRanked = [...allMovies].filter(m => (players[Object.keys(players)[0]]?.ratings?.[m.id]?.matches||0) > 0)
           const myRanked = ranked.map(m => m.id)
           const diffs = myRanked.map((id, i) => {
             const gi = globalRanked.findIndex(m => m.id === id)

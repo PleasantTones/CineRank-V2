@@ -16,6 +16,7 @@ import Friends from './pages/Friends'
 import Arcade from './pages/Arcade'
 const Hall = React.lazy(() => import('./pages/Hall'))
 const Admin = React.lazy(() => import('./pages/Admin'))
+const Fantasy = React.lazy(() => import('./pages/Fantasy'))
 import { useStore } from './store/useStore'
 import { useState } from 'react'
 import { sbFetch } from './lib/supabase'
@@ -123,7 +124,7 @@ export default function App() {
       {!isHall && !isAdmin && <Header />}
       {!isHall && !isAdmin && !player && <PlayerSelect />}
 
-      <main className={`flex-1 min-h-0 overflow-hidden ${isHall || isAdmin ? '' : 'pb-24'}`}>
+      <main className={`flex-1 min-h-0 overflow-hidden ${isHall || isAdmin ? '' : 'pb-16'}`}>
         <AnimatePresence mode="wait">
           <React.Suspense fallback={<div className="flex-1 flex items-center justify-center"><span className="text-ink-muted text-sm">Loading Hall...</span></div>}>
           <Routes location={location} key={location.pathname}>
@@ -135,6 +136,7 @@ export default function App() {
             <Route path="/arcade"      element={<Arcade />} />
             <Route path="/hall"        element={<HallErrorBoundary><Hall /></HallErrorBoundary>} />
             <Route path="/admin"       element={<Admin />} />
+            <Route path="/fantasy"     element={<Fantasy />} />
           </Routes>
           </React.Suspense>
         </AnimatePresence>

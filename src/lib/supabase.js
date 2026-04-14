@@ -15,5 +15,7 @@ export async function sbFetch(path, opts = {}) {
   }
   const res = await fetch(url, { ...opts, headers })
   if (!res.ok) throw new Error(await res.text())
-  return res.json()
+  if (res.status === 204 || res.headers.get('content-length') === '0') return null
+  const text = await res.text()
+  return text ? JSON.parse(text) : null
 }
