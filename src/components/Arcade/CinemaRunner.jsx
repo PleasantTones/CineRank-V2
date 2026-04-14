@@ -129,9 +129,9 @@ export default function CinemaRunner({ onEnd }) {
   }, [])
 
   return (
-    <div className="flex-1 min-h-0 flex flex-col gap-2">
-      <div className="relative flex-1 min-h-0">
-        <canvas ref={canvasRef} className="block w-full h-full rounded-2xl bg-raised" style={{ touchAction:"none", display:"block" }}
+    <div className="flex-1 min-h-0 flex flex-col items-center justify-center gap-2 p-2">
+      <div className="relative w-full flex items-center justify-center" style={{maxHeight:"calc(100% - 40px)"}}>
+        <canvas ref={canvasRef} className="block rounded-2xl bg-raised" style={{ touchAction:"none", maxWidth:"100%", maxHeight:"100%", width:"auto", height:"auto", aspectRatio:"600/400" }}
           style={{ aspectRatio: `${W}/${H}` }} />
         {phase !== 'playing' && (
           <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/80 rounded-2xl">

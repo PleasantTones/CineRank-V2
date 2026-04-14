@@ -121,7 +121,7 @@ export default function Hall() {
       const mWall    = new THREE.MeshStandardMaterial({ map: tWall,    roughness: 0.68, metalness: 0.06 })
       const mFloor   = new THREE.MeshStandardMaterial({ map: tFloor,   roughness: 0.55, metalness: 0.08 })
       const mCeiling = new THREE.MeshStandardMaterial({ map: tCeiling, roughness: 0.85, metalness: 0.0  })
-      const mGold    = new THREE.MeshStandardMaterial({ color: 0x6B5218, roughness: 0.12, metalness: 0.88 })  // shiny dark gold
+      const mGold    = new THREE.MeshStandardMaterial({ color: 0xB8922A, roughness: 0.14, metalness: 0.85 })  // medium gold — visible in ambient + shiny in direct light
       const mFresco  = new THREE.MeshStandardMaterial({ map: tFresco,  roughness: 0.9,  metalness: 0.0  })
       const mBlack   = new THREE.MeshStandardMaterial({ color: 0x0a0806, roughness: 0.9, metalness: 0.0 })
 
