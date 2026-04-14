@@ -109,8 +109,8 @@ export default function PosterCatch({ onEnd }) {
   }, [])
 
   return (
-    <div className="space-y-3">
-      <div className="relative">
+    <div className="flex-1 min-h-0 flex flex-col gap-2">
+      <div className="relative flex-1 min-h-0">
         <canvas ref={canvasRef} className="block w-full rounded-2xl bg-base"
           style={{ aspectRatio: `${W}/${H}`, touchAction: 'none' }} />
         {phase !== 'playing' && (

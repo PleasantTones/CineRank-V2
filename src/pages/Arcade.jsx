@@ -47,15 +47,15 @@ function GameOverlay({ game, onClose }) {
         <span className="text-sm font-bold text-ink-primary flex-1">{game.icon} {game.title}</span>
         {state === 'result' && <span className="text-gold font-bold font-mono">{finalScore} pts</span>}
       </div>
-      <div className="flex-1 overflow-y-auto overscroll-contain p-4">
+      <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
         <AnimatePresence mode="wait">
           {state === 'playing' ? (
-            <motion.div key="game" initial={{ opacity:0 }} animate={{ opacity:1 }}>
+            <motion.div key="game" initial={{ opacity:0 }} animate={{ opacity:1 }} className="flex-1 min-h-0 flex flex-col">
               <GameComponent onEnd={handleEnd} />
             </motion.div>
           ) : (
             <motion.div key="result" initial={{ opacity:0,scale:0.95 }} animate={{ opacity:1,scale:1 }}
-              className="text-center py-12 space-y-4">
+              className="text-center py-12 space-y-4 overflow-y-auto">
               <div className="text-5xl">🏆</div>
               <h2 className="text-xl font-black text-ink-primary">Well played!</h2>
               <div className="inline-block bg-surface border border-border rounded-2xl px-8 py-5">

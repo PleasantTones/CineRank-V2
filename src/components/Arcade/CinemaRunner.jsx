@@ -129,9 +129,9 @@ export default function CinemaRunner({ onEnd }) {
   }, [])
 
   return (
-    <div className="space-y-3">
-      <div className="relative">
-        <canvas ref={canvasRef} className="block w-full rounded-2xl bg-raised" style={{ touchAction: "none" }}
+    <div className="flex-1 min-h-0 flex flex-col gap-2">
+      <div className="relative flex-1 min-h-0">
+        <canvas ref={canvasRef} className="block w-full h-full rounded-2xl bg-raised" style={{ touchAction:"none", display:"block" }}
           style={{ aspectRatio: `${W}/${H}` }} />
         {phase !== 'playing' && (
           <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/80 rounded-2xl">

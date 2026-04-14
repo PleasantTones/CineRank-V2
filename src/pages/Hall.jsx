@@ -121,7 +121,7 @@ export default function Hall() {
       const mWall    = new THREE.MeshStandardMaterial({ map: tWall,    roughness: 0.68, metalness: 0.06 })
       const mFloor   = new THREE.MeshStandardMaterial({ map: tFloor,   roughness: 0.55, metalness: 0.08 })
       const mCeiling = new THREE.MeshStandardMaterial({ map: tCeiling, roughness: 0.85, metalness: 0.0  })
-      const mGold    = new THREE.MeshLambertMaterial({ color: 0x5C4A10 })
+      const mGold    = new THREE.MeshStandardMaterial({ color: 0x6B5218, roughness: 0.12, metalness: 0.88 })  // shiny dark gold
       const mFresco  = new THREE.MeshStandardMaterial({ map: tFresco,  roughness: 0.9,  metalness: 0.0  })
       const mBlack   = new THREE.MeshStandardMaterial({ color: 0x0a0806, roughness: 0.9, metalness: 0.0 })
 
@@ -136,6 +136,66 @@ export default function Hall() {
       // ── Corridor ────────────────────────────────────────────────────────────
       const cz = HL / 2 - 5
       mesh(new THREE.PlaneGeometry(HW*2, HL+10), mFloor,   0, 0,  cz, -Math.PI/2)
+
+      // Grand red carpet runner — rich texture with woven pile and ornate border
+      function makeGrandCarpet() {
+        const W = 512, H = 512
+        const cc = document.createElement('canvas'); cc.width = W; cc.height = H
+        const ctx = cc.getContext('2d')
+
+        // Deep crimson base
+        ctx.fillStyle = '#6B0C0C'; ctx.fillRect(0, 0, W, H)
+
+        // Woven pile texture — alternating dark/light rows to simulate cut pile
+        const id = ctx.getImageData(0, 0, W, H)
+        const d = id.data
+        for (let y = 0; y < H; y++) {
+          for (let x = 0; x < W; x++) {
+            const i = (y * W + x) * 4
+            // Herringbone weave: alternating diagonal stripes
+            const diag = (x + y) % 8
+            const fiber = Math.sin(x * 0.8) * Math.cos(y * 1.2) * 18
+            const row = (y % 4 < 2) ? 12 : -8
+            const noise = (Math.random() - 0.5) * 10
+            const bright = fiber + row + noise
+            d[i]   = Math.max(60,  Math.min(180, 107 + bright))
+            d[i+1] = Math.max(4,   Math.min(40,  12  + bright * 0.1))
+            d[i+2] = Math.max(4,   Math.min(40,  12  + bright * 0.1))
+            d[i+3] = 255
+          }
+        }
+        ctx.putImageData(id, 0, 0)
+
+        // Ornate gold border — outer frame
+        ctx.strokeStyle = 'rgba(200,160,48,0.9)'; ctx.lineWidth = 14
+        ctx.strokeRect(7, 7, W-14, H-14)
+        // Inner border line
+        ctx.strokeStyle = 'rgba(200,160,48,0.5)'; ctx.lineWidth = 4
+        ctx.strokeRect(20, 20, W-40, H-40)
+        // Corner diamond ornaments
+        const drawDiamond = (cx, cy, size) => {
+          ctx.fillStyle = 'rgba(200,160,48,0.75)'
+          ctx.beginPath()
+          ctx.moveTo(cx, cy - size); ctx.lineTo(cx + size, cy)
+          ctx.lineTo(cx, cy + size); ctx.lineTo(cx - size, cy)
+          ctx.closePath(); ctx.fill()
+        }
+        for (const [cx, cy] of [[28,28],[W-28,28],[28,H-28],[W-28,H-28]]) drawDiamond(cx, cy, 10)
+        // Center medallion hint
+        ctx.beginPath()
+        ctx.arc(W/2, H/2, 32, 0, Math.PI*2)
+        ctx.strokeStyle = 'rgba(160,100,20,0.3)'; ctx.lineWidth = 2; ctx.stroke()
+        ctx.beginPath()
+        ctx.arc(W/2, H/2, 20, 0, Math.PI*2)
+        ctx.strokeStyle = 'rgba(160,100,20,0.2)'; ctx.stroke()
+
+        return cc
+      }
+      const carpetTex = new THREE.CanvasTexture(makeGrandCarpet())
+      carpetTex.wrapS = carpetTex.wrapT = THREE.RepeatWrapping
+      carpetTex.repeat.set(1, 22)
+      const mCarpet = new THREE.MeshStandardMaterial({ map: carpetTex, roughness: 0.92, metalness: 0.0 })
+      mesh(new THREE.PlaneGeometry(2.2, HL+10), mCarpet, 0, 0.002, cz, -Math.PI/2)
       mesh(new THREE.PlaneGeometry(HW*2, HL+10), mCeiling, 0, HH, cz,  Math.PI/2)
       mesh(new THREE.PlaneGeometry(HL+10, HH),   mWall, -HW, HH/2, cz, 0,  Math.PI/2)
       mesh(new THREE.PlaneGeometry(HL+10, HH),   mWall,  HW, HH/2, cz, 0, -Math.PI/2)
