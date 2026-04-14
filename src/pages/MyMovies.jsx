@@ -34,8 +34,16 @@ export default function MyMovies() {
     ? allMovies
     : allMovies.filter(m => m.season === seasonFilter)
 
-  const seen = [...visibleMovies].filter(m => !ratings[m.id]?.unseen).sort((a,b) => a.title.localeCompare(b.title))
-  const unseen = [...visibleMovies].filter(m => ratings[m.id]?.unseen).sort((a,b) => a.title.localeCompare(b.title))
+  const seen = [...visibleMovies].filter(m => {
+    const r = ratings[m.id]
+    if (!r) return !m.dynamic  // dynamic movies without rating = unseen
+    return !r.unseen
+  }).sort((a,b) => a.title.localeCompare(b.title))
+  const unseen = [...visibleMovies].filter(m => {
+    const r = ratings[m.id]
+    if (!r) return !!m.dynamic  // dynamic movies without rating = unseen
+    return !!r.unseen
+  }).sort((a,b) => a.title.localeCompare(b.title))
   const ranked = [...seen]
     .filter(m => ratings[m.id]?.matches > 0)
     .sort((a, b) => ratings[b.id].elo - ratings[a.id].elo)

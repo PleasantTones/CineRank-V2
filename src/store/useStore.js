@@ -68,11 +68,10 @@ export const useStore = create((set, get) => ({
   }),
 
   // Merge Supabase season movies into the store
-  loadDynamicMovies: (rows) => set((state) => {
-    const dynamic = (rows || []).map(r => ({
+  loadDynamicMovies: (rows) => set(() => ({
+    dynamicMovies: (rows || []).map(r => ({
       id: r.id,
       title: r.title,
-      // TMDB CDN is public — use stored poster_path directly, no API key needed
       img: r.poster_path ? `https://image.tmdb.org/t/p/w342${r.poster_path}` : null,
       imdbId: r.imdb_id,
       tmdbId: r.tmdb_id,
@@ -80,22 +79,7 @@ export const useStore = create((set, get) => ({
       season: r.season,
       dynamic: true,
     }))
-
-    // For each player, add any new dynamic movies as unseen:true
-    // (preserves existing ratings if player already voted on this movie)
-    const updatedPlayers = {}
-    Object.entries(state.players).forEach(([playerName, pd]) => {
-      const ratings = { ...pd.ratings }
-      dynamic.forEach(m => {
-        if (!ratings[m.id]) {
-          ratings[m.id] = { elo: 1000, wins: 0, losses: 0, matches: 0, unseen: true }
-        }
-      })
-      updatedPlayers[playerName] = { ...pd, ratings }
-    })
-
-    return { dynamicMovies: dynamic, players: updatedPlayers }
-  }),
+  })),
 
   collectPoster: (id) => set(s => ({
     collected: s.collected.includes(id) ? s.collected : [...s.collected, id]

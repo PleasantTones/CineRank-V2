@@ -21,7 +21,11 @@ const MILESTONE_MSGS = {
 }
 
 function pickPair(ratings, playedPairs, movies = MOVIES) {
-  const seen = movies.filter(m => !ratings[m.id]?.unseen)
+  const seen = movies.filter(m => {
+    const r = ratings[m.id]
+    if (!r) return !m.dynamic  // no rating: hardcoded=seen, dynamic=unseen by default
+    return !r.unseen
+  })
   if (seen.length < 2) return null
   const played = new Set(playedPairs || [])
   const unplayed = []
