@@ -349,22 +349,37 @@ export default function Hall() {
         const kMat = new THREE.MeshBasicMaterial({ color: 0x1a1004 })
         mesh(new THREE.PlaneGeometry(2.7, 3.9), mGold, 0, HH/2+0.3, HL-5.05, 0, Math.PI)
         mesh(new THREE.PlaneGeometry(2.4, 3.6), kMat, 0, HH/2+0.3, HL-5.03, 0, Math.PI)
-        const pl2 = new THREE.PointLight(0xFFEED0, 6.0, 14, 1.2)
-        pl2.position.set(0, HH-0.5, HL-10)
-        scene.add(pl2)
-        const fc2 = document.createElement('canvas'); fc2.width=400; fc2.height=600
+        // No point light needed — MeshBasicMaterial is self-illuminating
+        const fc2 = document.createElement('canvas'); fc2.width=512; fc2.height=768
         const fctx = fc2.getContext('2d')
-        fctx.fillStyle='#1a1208'; fctx.fillRect(0,0,400,600)
-        fctx.strokeStyle='#C8A040'; fctx.lineWidth=3; fctx.strokeRect(6,6,388,588)
-        fctx.fillStyle='#C8A040'; fctx.font='bold 20px Inter,sans-serif'; fctx.textAlign='center'
-        fctx.fillText('👑 #1 ALL-TIME', 200, 260)
-        fctx.fillStyle='#FFFFFF'; fctx.font='bold 22px Inter,sans-serif'
+        // Rich dark background with warm vignette
+        const vg = fctx.createRadialGradient(256,384,60,256,384,380)
+        vg.addColorStop(0,'#2a1f0a'); vg.addColorStop(1,'#0d0905')
+        fctx.fillStyle=vg; fctx.fillRect(0,0,512,768)
+        // Gold border — double frame
+        fctx.strokeStyle='rgba(200,160,48,0.9)'; fctx.lineWidth=6; fctx.strokeRect(8,8,496,752)
+        fctx.strokeStyle='rgba(200,160,48,0.4)'; fctx.lineWidth=2; fctx.strokeRect(18,18,476,732)
+        // Crown and title
+        fctx.fillStyle='#F0C040'; fctx.font='bold 36px serif'; fctx.textAlign='center'
+        fctx.fillText('👑', 256, 200)
+        fctx.fillStyle='rgba(220,180,60,0.9)'; fctx.font='bold 18px Inter,sans-serif'
+        fctx.letterSpacing='4px'; fctx.fillText('#1  ALL-TIME CHAMPION', 256, 260)
+        // Divider
+        fctx.strokeStyle='rgba(200,160,48,0.5)'; fctx.lineWidth=1
+        fctx.beginPath(); fctx.moveTo(60,285); fctx.lineTo(452,285); fctx.stroke()
+        // Movie title — large and bright
+        fctx.fillStyle='#FFFFFF'; fctx.font='bold 28px Inter,sans-serif'; fctx.textAlign='center'
         const kw = king.title.split(' '); let kl='', klines=[]
-        kw.forEach(w => { const t=kl?kl+' '+w:w; fctx.measureText(t).width>350?(klines.push(kl),kl=w):(kl=t) }); klines.push(kl)
-        klines.forEach((l,i) => fctx.fillText(l, 200, 310+i*28))
-        kMat.map = new THREE.CanvasTexture(fc2); kMat.color.set(0xffffff); kMat.needsUpdate = true
+        kw.forEach(w => { const t=kl?kl+' '+w:w; fctx.measureText(t).width>420?(klines.push(kl),kl=w):(kl=t) }); klines.push(kl)
+        const startY = 360 - (klines.length-1)*20
+        klines.forEach((l,i) => fctx.fillText(l, 256, startY+i*38))
+        // ELO score
+        const gr0 = gr[king.id]
+        if (gr0?.elo) { fctx.fillStyle='rgba(200,160,48,0.8)'; fctx.font='16px Inter,sans-serif'; fctx.fillText('ELO ' + gr0.elo + '  ·  ' + gr0.wins + ' wins', 256, startY + klines.length*38 + 30) }
+        const kingTex = new THREE.CanvasTexture(fc2)
+        kMat.map = kingTex; kMat.color.set(0xffffff); kMat.needsUpdate = true
         const cK = getCachedPoster(king.id)
-        const applyK = url => { if(!url) return; const img=new Image(); if(!url.startsWith('data:')) img.crossOrigin='anonymous'; img.onload=()=>{const t=new THREE.Texture(img);t.colorSpace=THREE.SRGBColorSpace;t.needsUpdate=true;kMat.map=t;kMat.needsUpdate=true}; img.src=url }
+        const applyK = url => { if(!url) return; const img=new Image(); if(!url.startsWith('data:')) img.crossOrigin='anonymous'; img.onload=()=>{const t=new THREE.Texture(img);t.colorSpace=THREE.SRGBColorSpace;t.needsUpdate=true;kMat.map=t;kMat.color.set(0xffffff);kMat.needsUpdate=true}; img.onerror=()=>{}; img.src=url }
         if (cK) applyK(cK); else fetchPoster(king.id).then(applyK)
       }
 
