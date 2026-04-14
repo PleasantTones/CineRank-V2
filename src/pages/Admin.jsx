@@ -225,8 +225,9 @@ export default function Admin() {
   const isAdded = (tmdbId) => seasonMovies.some(m => m.tmdb_id === String(tmdbId))
 
   return (
-    <div className="min-h-screen bg-base text-ink-primary p-4 pb-20">
-      <div className="max-w-2xl mx-auto">
+    <div className="h-full overflow-y-auto overscroll-contain bg-base text-ink-primary">
+      <div className="p-4 pb-20 max-w-2xl mx-auto">
+      <div>
         {/* Header */}
         <div className="flex items-center gap-3 mb-6">
           <button onClick={() => navigate('/leaderboard')} className="text-ink-muted text-sm hover:text-ink-primary">← Back</button>
@@ -408,6 +409,7 @@ CREATE POLICY "d" ON season_movies FOR DELETE USING (true);`}</pre>
         <p className="text-center text-[10px] text-ink-muted mt-6">
           Movies added here will appear in voting, leaderboard, and Hall of Fame on next reload.
         </p>
+      </div>
       </div>
     </div>
   )
