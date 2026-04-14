@@ -97,7 +97,7 @@ export const useStore = create(
           MOVIES.forEach(m => { ratings[m.id] = { elo: 1000, wins: 0, losses: 0, matches: 0, unseen: false } })
           ;(rows || []).forEach(r => {
             if (ratings[r.movie_id]) {
-              ratings[r.movie_id] = { elo: r.elo || 1000, wins: r.wins || 0, losses: r.losses || 0, matches: r.matches || 0, unseen: false }
+              ratings[r.movie_id] = { elo: r.elo || 1000, wins: r.wins || 0, losses: r.losses || 0, matches: r.matches || 0, unseen: r.unseen ?? false }
             }
           })
           const existing = s.players[playerName] || { ratings: {}, matchCount: 0, playedPairs: [], h2hHistory: {} }
@@ -132,7 +132,7 @@ export const useStore = create(
         const ratings = initRatings()
         rows.forEach(r => {
           if (ratings[r.movie_id]) {
-            ratings[r.movie_id] = { elo: r.elo || 1000, wins: r.wins || 0, losses: r.losses || 0, matches: r.matches || 0, unseen: false }
+            ratings[r.movie_id] = { elo: r.elo || 1000, wins: r.wins || 0, losses: r.losses || 0, matches: r.matches || 0, unseen: r.unseen ?? false }
           }
         })
         const existing = s.players[playerName] || defaultPlayer()

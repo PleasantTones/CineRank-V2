@@ -100,8 +100,8 @@ export default function Hall() {
     }
     const texSize = isMobile ? 256 : 512
     const tFloor   = canvasTex(makeMarbleTexture(texSize,texSize,{baseColor:[228,218,198],veinColor:[188,162,118],veinCount:isMobile?3:5}), 6, 30)
-    const tWall    = canvasTex(makeMarbleTexture(texSize,texSize,{baseColor:[198,186,162],veinColor:[155,118,50],veinCount:isMobile?3:5}), 1, 1)
-    const tCeiling = canvasTex(makeMarbleTexture(texSize,texSize,{baseColor:[188,175,152],veinCount:isMobile?2:3}), 3, 12)
+    const tWall    = canvasTex(makeMarbleTexture(texSize,texSize,{baseColor:[228,218,198],veinColor:[175,148,100],veinCount:isMobile?2:4}), 1, 1)
+    const tCeiling = canvasTex(makeMarbleTexture(texSize,texSize,{baseColor:[205,208,212],veinColor:[175,178,182],veinCount:1}), 3, 12)
     const tGold    = canvasTex(makeGoldTexture(128,128), 1, 1)
     const tFresco  = new THREE.CanvasTexture(makeFrescoTexture(isMobile?512:1024,isMobile?256:512))
 
@@ -109,7 +109,7 @@ export default function Hall() {
     const mWall    = new THREE.MeshStandardMaterial({ map: tWall, roughness: 0.68, metalness: 0.06 })
     const mFloor   = new THREE.MeshStandardMaterial({ map: tFloor, roughness: 0.55, metalness: 0.08 })
     const mCeiling = new THREE.MeshStandardMaterial({ map: tCeiling, roughness: 0.85, metalness: 0.0 })
-    const mGold    = new THREE.MeshBasicMaterial({ map: tGold, color: 0xD4A840 })
+    const mGold    = new THREE.MeshLambertMaterial({ color: 0x5C4A10 })  // dark olive-bronze = consistent metallic look
     const mDark    = new THREE.MeshBasicMaterial({ color: 0x0a0804 })
     const mFresco  = new THREE.MeshStandardMaterial({ map: tFresco, roughness: 0.9, metalness: 0.0 })
 
@@ -219,8 +219,8 @@ export default function Hall() {
     }
 
     // ── Lighting ──────────────────────────────────────────────────────────────
-    scene.add(new THREE.AmbientLight(0xFFF8F0, 0.35))  // balanced ambient
-    const dir = new THREE.DirectionalLight(0xFFF8F0, 0.55)
+    scene.add(new THREE.AmbientLight(0xFFF8F0, 0.40))
+    const dir = new THREE.DirectionalLight(0xFFF8F0, 0.45)
     dir.position.set(0, 8, 20)
     scene.add(dir)
     // fill light removed for performance
@@ -552,16 +552,17 @@ export default function Hall() {
       })
       renderer.dispose()
     }
-  }, [rankedMovies, players])
+  }, [rankedMovies])  // rebuild only if rankings change (first real load)
 
   return (
     <div className="fixed inset-0 bg-black" style={{ zIndex: 100, touchAction: 'none' }}>
       {!hasRealData && (
-        <div className="absolute inset-0 flex flex-col items-center justify-center z-10 pointer-events-none">
+        <div className="absolute inset-0 flex flex-col items-center justify-center">
           <div className="text-gold/60 text-sm font-semibold tracking-widest animate-pulse">LOADING HALL...</div>
+          <div className="text-gold/30 text-xs mt-2">Loading rankings from server...</div>
         </div>
       )}
-      <canvas ref={canvasRef} style={{ position:'absolute', inset:0, width:'100%', height:'100%' }} />
+      {hasRealData && <canvas ref={canvasRef} style={{ position:'absolute', inset:0, width:'100%', height:'100%' }} />}
 
       <div ref={roomRef} className="absolute top-4 left-1/2 -translate-x-1/2 text-[11px] font-bold tracking-[0.25em] pointer-events-none whitespace-nowrap"
         style={{ color:'rgba(200,168,64,0.9)', textShadow:'0 1px 8px rgba(0,0,0,0.9)' }} />
