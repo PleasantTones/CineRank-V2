@@ -51,8 +51,11 @@ export default function Hall() {
   const hasRealData = Object.values(globalRatings).some(r => r.matches > 0)
 
   useEffect(() => {
+    // Only build the scene once — rankedMovies reference can change without needing a rebuild
+    if (hasBuilt.current) return
     const canvas = canvasRef.current
     if (!canvas) return
+    hasBuilt.current = true
     
     // Three.js setup
 
@@ -542,15 +545,15 @@ export default function Hall() {
     rafRef.current = requestAnimationFrame(loop)
 
     return () => {
-      cancelAnimationFrame(rafRef.current)
-      window.removeEventListener('keydown', e => { keysRef.current[e.code] = true })
-      window.removeEventListener('keyup',   e => { keysRef.current[e.code] = false })
-      window.removeEventListener('resize', resize)
-      scene.traverse(o => {
-        if (o.geometry) o.geometry.dispose()
-        if (o.material) { Array.isArray(o.material) ? o.material.forEach(m=>m.dispose()) : o.material.dispose() }
-      })
-      renderer.dispose()
+      try {
+        cancelAnimationFrame(rafRef.current)
+        window.removeEventListener('resize', resize)
+        scene.traverse(o => {
+          if (o.geometry) o.geometry.dispose()
+          if (o.material) { Array.isArray(o.material) ? o.material.forEach(m=>m.dispose()) : o.material.dispose() }
+        })
+        renderer.dispose()
+      } catch(e) { console.warn('Hall cleanup:', e) }
     }
   }, [rankedMovies])  // rebuild only if rankings change (first real load)
 

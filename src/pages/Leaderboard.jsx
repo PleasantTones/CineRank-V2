@@ -31,7 +31,22 @@ export default function Leaderboard() {
   const [sort, setSort] = useState('elo')
   const snapshot = useEloSnapshot(globalRatings)
 
-  const ratings = filter === 'global' ? globalRatings : (players[filter]?.ratings ?? globalRatings)
+  // Compute global ratings directly from players if store hasn't populated it yet
+  const computedGlobal = React.useMemo(() => {
+    const global = {}
+    MOVIES.forEach(m => {
+      let eloSum = 0, eloCount = 0, wins = 0, losses = 0, matches = 0
+      PLAYERS.forEach(p => {
+        const r = players[p]?.ratings?.[m.id]
+        if (r && r.matches > 0) { eloSum += r.elo; eloCount++; wins += r.wins; losses += r.losses; matches += r.matches }
+      })
+      global[m.id] = { elo: eloCount > 0 ? Math.round(eloSum / eloCount) : 1000, wins, losses, matches }
+    })
+    return global
+  }, [players])
+
+  const effectiveGlobal = Object.values(globalRatings).some(r => r.matches > 0) ? globalRatings : computedGlobal
+  const ratings = filter === 'global' ? effectiveGlobal : (players[filter]?.ratings ?? effectiveGlobal)
 
   const rows = useMemo(() => {
     return [...MOVIES]
@@ -84,7 +99,7 @@ export default function Leaderboard() {
           )}
         </AnimatePresence>
 
-        {/* Player filter dots — global by default, click a name to filter */}
+        {/* Player filter — combined by default, click a name to see that player's rankings */}
         <div className="flex items-center gap-3 flex-wrap">
           <button
             onClick={() => setFilter('global')}
@@ -94,7 +109,7 @@ export default function Leaderboard() {
                 : 'border-border text-ink-muted hover:text-ink-secondary'
             }`}
           >
-            All Players
+            Everyone
           </button>
           {PLAYERS.map(p => (
             <button

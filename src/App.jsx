@@ -71,7 +71,7 @@ export default function App() {
         // Only query columns that exist in v1 Supabase schema
         // movie_a + movie_b are the v1 pair columns
         const [ratings, matchups] = await Promise.all([
-          sbFetch('/rest/v1/ratings?select=player,movie_id,elo,wins,losses,matches'),
+          sbFetch('/rest/v1/ratings?select=player,movie_id,elo,wins,losses,matches,unseen'),
           sbFetch('/rest/v1/matchups?select=player,movie_a,movie_b&limit=10000'),
         ])
 

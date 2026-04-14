@@ -172,26 +172,9 @@ export const useStore = create(
     {
       name: 'cinerank-store',
       version: 3,  // bump this whenever store shape changes
-      migrate: (persisted, version) => {
-        // If version is old or data is corrupt, return clean state
-        try {
-          if (!persisted || typeof persisted !== 'object') return {}
-          if (!persisted.players || typeof persisted.players !== 'object') return {}
-          // Ensure all players have required fields
-          const players = {}
-          Object.entries(persisted.players || {}).forEach(([name, pd]) => {
-            players[name] = {
-              ratings: pd?.ratings || {},
-              matchCount: pd?.matchCount || 0,
-              playedPairs: Array.isArray(pd?.playedPairs) ? pd.playedPairs : [],
-              h2hHistory: pd?.h2hHistory || {},
-            }
-          })
-          return { ...persisted, players }
-        } catch(e) {
-          console.warn('Store migration failed, resetting:', e)
-          return {}
-        }
+      migrate: (persisted) => {
+        // Only {player, muted} are persisted — just pass them through
+        return { player: persisted?.player || '', muted: persisted?.muted || false }
       },
       partialize: (s) => ({ player: s.player, muted: s.muted }),  // only persist UI prefs — game data always loads from Supabase
     }
