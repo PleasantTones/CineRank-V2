@@ -96,12 +96,12 @@ export default function Hall() {
     const tFresco  = new THREE.CanvasTexture(makeFrescoTexture(isMobile?512:1024,isMobile?256:512))
 
     // ── Materials ─────────────────────────────────────────────────────────────
-    const mWall    = new THREE.MeshLambertMaterial({ map: tWall })
-    const mFloor   = new THREE.MeshLambertMaterial({ map: tFloor })
-    const mCeiling = new THREE.MeshLambertMaterial({ map: tCeiling })
+    const mWall    = new THREE.MeshStandardMaterial({ map: tWall, roughness: 0.75, metalness: 0.04 })
+    const mFloor   = new THREE.MeshStandardMaterial({ map: tFloor, roughness: 0.55, metalness: 0.08 })
+    const mCeiling = new THREE.MeshStandardMaterial({ map: tCeiling, roughness: 0.85, metalness: 0.0 })
     const mGold    = new THREE.MeshBasicMaterial({ map: tGold, color: 0xD4A840 })
     const mDark    = new THREE.MeshBasicMaterial({ color: 0x0a0804 })
-    const mFresco  = new THREE.MeshLambertMaterial({ map: tFresco })
+    const mFresco  = new THREE.MeshStandardMaterial({ map: tFresco, roughness: 0.9, metalness: 0.0 })
 
     function add(geo, mat, x, y, z, rx=0, ry=0, rz=0) {
       const m = new THREE.Mesh(geo, mat)
@@ -141,15 +141,16 @@ export default function Hall() {
       }
     }
 
-    // Crown molding strips (gold, along walls at ceiling)
+    // Crown molding — offset 0.02 inward to prevent z-fighting with walls
     for (const x of [-HW, HW]) {
       const ry = x < 0 ? Math.PI/2 : -Math.PI/2
-      add(new THREE.PlaneGeometry(HL+10, 0.22), mGold, x, HH - 0.11, cz, 0, ry)
-      add(new THREE.PlaneGeometry(HL+10, 0.12), mGold, x, 0.06, cz, 0, ry)
+      const xi = x < 0 ? x + 0.02 : x - 0.02  // pull in from wall surface
+      add(new THREE.PlaneGeometry(HL+10, 0.24), mGold, xi, HH - 0.12, cz, 0, ry)  // crown
+      add(new THREE.PlaneGeometry(HL+10, 0.14), mGold, xi, 0.07, cz, 0, ry)        // base
     }
-    // Floor border strips
-    add(new THREE.PlaneGeometry(0.12, HL+10), mGold, -HW+0.4, 0.001, cz, -Math.PI/2)
-    add(new THREE.PlaneGeometry(0.12, HL+10), mGold,  HW-0.4, 0.001, cz, -Math.PI/2)
+    // Floor border strips — slightly above floor to avoid z-fighting
+    add(new THREE.PlaneGeometry(0.14, HL+10), mGold, -HW+0.4, 0.003, cz, -Math.PI/2)
+    add(new THREE.PlaneGeometry(0.14, HL+10), mGold,  HW-0.4, 0.003, cz, -Math.PI/2)
 
     // ── Transverse arch walls ─────────────────────────────────────────────────
     function archWall(z) {
@@ -170,7 +171,7 @@ export default function Hall() {
     const colGeo = new THREE.CylinderGeometry(0.16, 0.2, HH - 0.4, 10)
     const capGeo = new THREE.CylinderGeometry(0.25, 0.16, 0.18, 10)
     const baseGeo= new THREE.CylinderGeometry(0.22, 0.25, 0.12, 10)
-    const mCol   = new THREE.MeshLambertMaterial({ map: tWall })
+    const mCol   = new THREE.MeshStandardMaterial({ map: tWall, roughness: 0.65, metalness: 0.06 })
 
     // Columns: skip on mobile, every 18 units on desktop
     if (!isMobile) {
@@ -189,23 +190,23 @@ export default function Hall() {
     const chandMat  = new THREE.MeshBasicMaterial({ color: 0xDDEEFF })
 
     const lights = []
-    for (let z = 2; z < HL - 6; z += 26) {  // every 26 units = 3 lights total
+    for (let z = 4; z < HL - 6; z += 20) {  // every 20 units = 4 lights
       const cy = HH - 0.35
       add(chandGeo, chandMat, 0, cy, z)
       add(ringGeo, mGold, 0, cy - 0.15, z, Math.PI/2)
       // Chain (desktop only)
       if (!isMobile) add(new THREE.CylinderGeometry(0.015, 0.015, 0.55, 4), mGold, 0, HH - 0.06, z)
 
-      const pl = new THREE.PointLight(0xFFDD90, 3.2, 22, 1.4)  // brighter + wider range = fewer needed
+      const pl = new THREE.PointLight(0xFFDD90, 2.6, 18, 1.5)
       pl.position.set(0, cy - 0.2, z)
       scene.add(pl)
       lights.push(pl)
     }
 
     // ── Lighting ──────────────────────────────────────────────────────────────
-    scene.add(new THREE.AmbientLight(0xFFF0D8, 0.38))  // dimmer = more dramatic contrast
-    const dir = new THREE.DirectionalLight(0xFFEED0, 0.6)
-    dir.position.set(2, 8, 15)
+    scene.add(new THREE.AmbientLight(0xFFF0D8, 0.32))  // PBR needs less ambient
+    const dir = new THREE.DirectionalLight(0xFFF5E8, 0.5)
+    dir.position.set(1, 6, 12)
     scene.add(dir)
     // fill light removed for performance
 
@@ -247,7 +248,7 @@ export default function Hall() {
       const frame = add(new THREE.PlaneGeometry(pw+0.18, ph+0.18), mGold, px, y, z, 0, ry)
 
       // Dark mat
-      const matMat = new THREE.MeshLambertMaterial({ color: 0x100c04 })
+      const matMat = new THREE.MeshStandardMaterial({ color: 0x100c04, roughness: 1.0, metalness: 0 })
       add(new THREE.PlaneGeometry(pw+0.06, ph+0.06), matMat, px + (side<0?0.005:-0.005), y, z, 0, ry)
 
       // Canvas
