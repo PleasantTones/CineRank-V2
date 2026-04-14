@@ -884,16 +884,19 @@ function CommissionerPanel({ session, picks, draftPlayers, allMovies, onBack, on
     setWorking(false)
   }
 
-  // End the draft completely — delete session and all picks
+  // End the draft — mark as cancelled so it disappears from the active query
   const endDraft = async () => {
     if (!session) return
-    if (!confirm('Delete this entire draft session and all picks? This cannot be undone.')) return
-    setWorking(true); setMsg('Deleting draft…')
+    if (!confirm('Cancel this draft and start fresh? You can then pick any season.')) return
+    setWorking(true); setMsg('Cancelling draft…')
     try {
-      await sbFetch(`/rest/v1/draft_picks?session_id=eq.${session.id}`, { method: 'DELETE' })
-      await sbFetch(`/rest/v1/draft_sessions?id=eq.${session.id}`, { method: 'DELETE' })
+      // Mark session as cancelled (RLS has no DELETE policy, UPDATE is safe)
+      await sbFetch(`/rest/v1/draft_sessions?id=eq.${session.id}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ status: 'cancelled' })
+      })
       await onReload()
-      onBack()  // return to lobby where they can start a new draft
+      onBack()
     } catch(e) { setMsg('Error: ' + e.message); setWorking(false) }
   }
 

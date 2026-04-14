@@ -79,7 +79,7 @@ export default function MovieModal() {
             exit={{ opacity: 0, scale: 0.94, y: 16 }}
             transition={{ type: 'spring', stiffness: 420, damping: 32 }}
             className="w-full max-w-sm bg-surface rounded-2xl overflow-hidden border border-border relative"
-            style={{ maxHeight: '90dvh', maxWidth: '480px', width: '100%', display: 'flex', flexDirection: 'column' }}
+            style={{ maxHeight: '90dvh', maxWidth: '480px', width: '100%', display: 'flex', flexDirection: 'column', minHeight: 0 }}
           >
             {/* Close button */}
             <button
@@ -132,7 +132,7 @@ export default function MovieModal() {
             </div>
 
             {/* Body */}
-            <div className="overflow-y-auto overscroll-contain no-scrollbar flex-1 p-5 space-y-4">
+            <div className="overflow-y-auto overscroll-contain no-scrollbar flex-1 min-h-0 p-5 pb-6 space-y-4">
               {/* ELO stats */}
               {rating && rating.matches > 0 && (
                 <div className="grid grid-cols-3 gap-2">
