@@ -43,7 +43,7 @@ export default function Fantasy() {
   const { player, dynamicMovies } = useStore()
   const allMovies = getAllMovies(dynamicMovies)
 
-  const [view, setView] = useState('home')      // home | setup | draft | slate
+  const [view, setView] = useState('home')      // home | setup | draft | slate | commissioner
   const [session, setSession] = useState(null)  // active draft session
   const [picks, setPicks] = useState([])        // all picks so far
   const [pickingSeason, setPickingSeason] = useState(CURRENT_SEASON)
@@ -380,6 +380,14 @@ export default function Fantasy() {
           <button onClick={() => setView('setup')}
             className="w-full py-4 bg-gold text-black font-black rounded-2xl text-base">
             🎬 Start New Draft
+          </button>
+        )}
+
+        {/* ── Commissioner Tools ── */}
+        {isCommissioner && (
+          <button onClick={() => setView('commissioner')}
+            className="w-full py-3 bg-surface border border-gold/20 rounded-2xl text-sm font-bold text-gold/80 hover:border-gold/50 hover:text-gold transition-all">
+            ⚙️ Commissioner Tools
           </button>
         )}
 
@@ -836,5 +844,175 @@ export default function Fantasy() {
     )
   }
 
+  // ── COMMISSIONER TOOLS ──────────────────────────────────────────────────────
+  if (view === 'commissioner') return (
+    <CommissionerPanel
+      session={session}
+      picks={picks}
+      draftPlayers={draftPlayers}
+      allMovies={allMovies}
+      onBack={() => setView('home')}
+      onReload={loadSession}
+      onStartSetup={() => setView('setup')}
+    />
+  )
+
   return null
+}
+
+// ── Commissioner Panel Component ───────────────────────────────────────────────
+function CommissionerPanel({ session, picks, draftPlayers, allMovies, onBack, onReload, onStartSetup }) {
+  const [working, setWorking] = useState(false)
+  const [msg, setMsg] = useState('')
+  const [editingPick, setEditingPick] = useState(null)
+
+  const confirm = (text) => window.confirm(text)
+
+  // Reset draft — wipe all picks, set index to 0, keep session active
+  const resetDraft = async () => {
+    if (!session) return
+    if (!confirm('Reset the draft to pick 1? All picks will be deleted but the session stays active.')) return
+    setWorking(true); setMsg('Resetting picks…')
+    try {
+      await sbFetch(`/rest/v1/draft_picks?session_id=eq.${session.id}`, { method: 'DELETE' })
+      await sbFetch(`/rest/v1/draft_sessions?id=eq.${session.id}`, {
+        method: 'PATCH', body: JSON.stringify({ current_pick_index: 0, status: 'active' })
+      })
+      setMsg('✅ Draft reset to pick 1')
+      await onReload()
+    } catch(e) { setMsg('Error: ' + e.message) }
+    setWorking(false)
+  }
+
+  // End the draft completely — delete session and all picks
+  const endDraft = async () => {
+    if (!session) return
+    if (!confirm('Delete this entire draft session and all picks? This cannot be undone.')) return
+    setWorking(true); setMsg('Deleting draft…')
+    try {
+      await sbFetch(`/rest/v1/draft_picks?session_id=eq.${session.id}`, { method: 'DELETE' })
+      await sbFetch(`/rest/v1/draft_sessions?id=eq.${session.id}`, { method: 'DELETE' })
+      setMsg('✅ Draft deleted')
+      await onReload()
+    } catch(e) { setMsg('Error: ' + e.message) }
+    setWorking(false)
+  }
+
+  // Undo picks from a specific index onwards
+  const undoFromPick = async (pickIndex) => {
+    if (!session) return
+    if (!confirm(`Undo all picks from pick #${pickIndex + 1} onwards?`)) return
+    setWorking(true); setMsg(`Undoing from pick ${pickIndex + 1}…`)
+    try {
+      // Delete all picks with pick_index >= pickIndex
+      const toDelete = picks.filter(p => p.pick_index >= pickIndex)
+      for (const p of toDelete) {
+        await sbFetch(`/rest/v1/draft_picks?id=eq.${p.id}`, { method: 'DELETE' })
+      }
+      await sbFetch(`/rest/v1/draft_sessions?id=eq.${session.id}`, {
+        method: 'PATCH', body: JSON.stringify({ current_pick_index: pickIndex, status: 'active' })
+      })
+      setMsg(`✅ Rolled back to pick ${pickIndex + 1}`)
+      await onReload()
+    } catch(e) { setMsg('Error: ' + e.message) }
+    setWorking(false)
+  }
+
+  // Mark draft complete
+  const completeDraft = async () => {
+    if (!session) return
+    if (!confirm('Mark this draft as complete?')) return
+    setWorking(true)
+    try {
+      await sbFetch(`/rest/v1/draft_sessions?id=eq.${session.id}`, {
+        method: 'PATCH', body: JSON.stringify({ status: 'complete' })
+      })
+      setMsg('✅ Draft marked complete')
+      await onReload()
+    } catch(e) { setMsg('Error: ' + e.message) }
+    setWorking(false)
+  }
+
+  return (
+    <PageWrapper>
+      <div className="p-4 space-y-4">
+        <div className="flex items-center gap-3">
+          <button onClick={onBack} className="text-ink-muted text-sm py-2 pr-3">← Lobby</button>
+          <h2 className="text-lg font-black">⚙️ Commissioner Tools</h2>
+        </div>
+
+        {msg && (
+          <div className={`rounded-xl p-3 text-xs font-medium ${msg.startsWith('✅') ? 'bg-win/10 border border-win/30 text-win' : msg.startsWith('Error') ? 'bg-red-900/20 border border-red-500/30 text-red-400' : 'bg-gold/10 border border-gold/30 text-gold'}`}>
+            {msg}
+          </div>
+        )}
+
+        {/* Active draft controls */}
+        {session ? (
+          <>
+            <div className="bg-surface border border-border rounded-2xl p-4">
+              <p className="text-xs font-bold text-ink-muted uppercase tracking-widest mb-1">Active Draft</p>
+              <p className="text-sm font-black text-ink-primary mb-1">{SEASON_LABELS[session.season] || session.season}</p>
+              <p className="text-xs text-ink-muted">{picks.length}/{TOTAL_PICKS} picks made · Status: {session.status}</p>
+            </div>
+
+            {/* Draft actions */}
+            <div className="bg-surface border border-border rounded-2xl p-4 space-y-2">
+              <p className="text-xs font-bold text-ink-muted uppercase tracking-widest mb-3">Draft Actions</p>
+              <button onClick={resetDraft} disabled={working || !picks.length}
+                className="w-full py-3 bg-gold/10 border border-gold/30 text-gold font-bold rounded-xl text-sm hover:bg-gold/20 disabled:opacity-40">
+                🔄 Reset to Pick 1
+                <span className="block text-[10px] font-normal text-gold/60">Clears all picks, keeps session active</span>
+              </button>
+              <button onClick={completeDraft} disabled={working || session.status === 'complete'}
+                className="w-full py-3 bg-win/10 border border-win/30 text-win font-bold rounded-xl text-sm hover:bg-win/20 disabled:opacity-40">
+                ✅ Mark Draft Complete
+              </button>
+              <button onClick={endDraft} disabled={working}
+                className="w-full py-3 bg-red-900/20 border border-red-500/30 text-red-400 font-bold rounded-xl text-sm hover:bg-red-900/40">
+                🗑 Delete Entire Draft
+                <span className="block text-[10px] font-normal text-red-400/60">Removes session and all picks permanently</span>
+              </button>
+            </div>
+
+            {/* Pick history — undo from any pick */}
+            {picks.length > 0 && (
+              <div className="bg-surface border border-border rounded-2xl p-4">
+                <p className="text-xs font-bold text-ink-muted uppercase tracking-widest mb-3">
+                  Pick History — tap ↩ to roll back from that pick
+                </p>
+                <div className="space-y-1.5 max-h-80 overflow-y-auto">
+                  {[...picks].reverse().map((pick, i) => {
+                    const movie = allMovies.find(m => m.id === pick.movie_id)
+                    const pt = PICK_TYPES[pick.pick_type]
+                    return (
+                      <div key={pick.id} className="flex items-center gap-2 p-2 bg-raised rounded-xl">
+                        <span className="text-[10px] text-ink-muted font-mono w-6 text-right flex-shrink-0">#{pick.pick_index + 1}</span>
+                        <span className="text-sm flex-shrink-0">{pt?.icon}</span>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs font-semibold text-ink-primary truncate">{movie?.title || pick.movie_id}</p>
+                          <p className="text-[10px] text-ink-muted" style={{ color: PLAYER_COLORS[pick.player] }}>{pick.player}</p>
+                        </div>
+                        <button onClick={() => undoFromPick(pick.pick_index)} disabled={working}
+                          className="flex-shrink-0 px-2 py-1 text-[10px] text-gold border border-gold/30 rounded-lg hover:bg-gold/10 disabled:opacity-40">
+                          ↩ Undo from here
+                        </button>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
+          </>
+        ) : (
+          <div className="bg-surface border border-border rounded-2xl p-4 text-center">
+            <p className="text-sm text-ink-muted mb-3">No active draft session.</p>
+            <button onClick={onStartSetup} className="px-6 py-3 bg-gold text-black font-black rounded-xl text-sm">
+              Start New Draft →
+            </button>
+          </div>
+        )}
+      </div>
+    </PageWrapper>
+  )
 }

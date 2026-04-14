@@ -28,11 +28,7 @@ export async function fetchPoster(movieId, imdbIdOverride, tmdbIdOverride) {
   const tmdbId = tmdbIdOverride || null
   const tmdbKey = localStorage.getItem('tmdb_key')
 
-  // Strategy:
-  // Dynamic movies (have tmdbId): try TMDB first — always current for upcoming films
-  // Hardcoded movies (have imdbId only): try OMDB — already cached and reliable
-  // Fallback chain: TMDB → OMDB → null
-
+  // Try TMDB by direct movie ID
   const tryTMDB = async () => {
     if (!tmdbId || !tmdbKey) return null
     try {
@@ -42,6 +38,7 @@ export async function fetchPoster(movieId, imdbIdOverride, tmdbIdOverride) {
     } catch { return null }
   }
 
+  // Try OMDB by IMDB ID (OMDB sources its posters from IMDB)
   const tryOMDB = async () => {
     if (!imdbId) return null
     try {
@@ -51,17 +48,33 @@ export async function fetchPoster(movieId, imdbIdOverride, tmdbIdOverride) {
     } catch { return null }
   }
 
+  // Final fallback: TMDB /find by IMDB ID — TMDB can look up any movie via its
+  // IMDB ID and return the TMDB poster (sourced from IMDB's image library).
+  // This catches cases where OMDB is rate-limited or missing data.
+  const tryTMDBviaIMDB = async () => {
+    if (!imdbId || !tmdbKey) return null
+    try {
+      const res = await fetch(
+        `https://api.themoviedb.org/3/find/${imdbId}?api_key=${tmdbKey}&external_source=imdb_id`
+      )
+      const d = await res.json()
+      const movie = d.movie_results?.[0]
+      return movie?.poster_path ? `https://image.tmdb.org/t/p/w342${movie.poster_path}` : null
+    } catch { return null }
+  }
+
   pending[movieId] = (async () => {
     let url = null
 
     if (tmdbId) {
-      // Dynamic movie — TMDB first, OMDB as backup
+      // Dynamic movie: TMDB direct → OMDB → TMDB via IMDB
       url = await tryTMDB()
       if (!url) url = await tryOMDB()
+      if (!url) url = await tryTMDBviaIMDB()
     } else {
-      // Hardcoded movie — OMDB first, TMDB as backup
+      // Hardcoded movie: OMDB → TMDB via IMDB (uses imdbId to find on TMDB)
       url = await tryOMDB()
-      if (!url) url = await tryTMDB()
+      if (!url) url = await tryTMDBviaIMDB()
     }
 
     if (url) {

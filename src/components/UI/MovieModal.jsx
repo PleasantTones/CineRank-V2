@@ -226,9 +226,10 @@ export default function MovieModal() {
               </div>
             )}
 
-            {/* IMDb button */}
+            {/* IMDb button — intentional gap from box office */}
+
             {imdbUrl && (
-              <div className="flex-shrink-0 p-4 pt-0">
+              <div className="flex-shrink-0 p-4 pt-3">
                 <a
                   href={imdbUrl}
                   target="_blank"
