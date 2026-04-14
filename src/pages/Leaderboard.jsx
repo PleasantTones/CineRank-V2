@@ -4,6 +4,7 @@ import PageWrapper from '../components/UI/PageWrapper'
 import { openMovieModal } from '../components/UI/MovieModal'
 import { useStore } from '../store/useStore'
 import { MOVIES, PLAYERS, PLAYER_COLORS } from '../lib/movies'
+import PosterImage from '../components/UI/PosterImage'
 
 const SORTS = [
   { key: 'elo',     label: 'ELO score' },
@@ -73,7 +74,7 @@ export default function Leaderboard() {
               style={{ background: 'rgba(200,160,64,0.06)' }}
             >
               <span className="text-base">📈</span>
-              <img src={mostImproved.movie.img} className="w-7 h-10 object-cover rounded-md flex-shrink-0" />
+              <PosterImage movieId={mostImproved.movie.id} fallbackSrc={mostImproved.movie.img} className="w-7 h-10 object-cover rounded-md flex-shrink-0" />
               <div className="flex-1 min-w-0">
                 <p className="text-[10px] font-bold text-gold/60 uppercase tracking-widest">Most improved</p>
                 <p className="text-xs font-semibold text-ink-primary truncate">{mostImproved.movie.title}</p>
@@ -119,7 +120,7 @@ export default function Leaderboard() {
             <select
               value={sort}
               onChange={e => setSort(e.target.value)}
-              className="text-xs font-semibold bg-surface border border-border rounded-lg px-2.5 py-1.5 text-ink-primary focus:outline-none focus:border-gold cursor-pointer"
+              className="text-xs font-semibold bg-surface border border-border rounded-lg px-2.5 py-2 text-ink-primary focus:outline-none focus:border-gold cursor-pointer"
             >
               {SORTS.map(s => <option key={s.key} value={s.key}>{s.label}</option>)}
             </select>
@@ -166,11 +167,11 @@ export default function Leaderboard() {
                 </span>
 
                 {/* Poster */}
-                <img src={movie.img} alt={movie.title}
+                <PosterImage movieId={movie.id} fallbackSrc={movie.img} alt={movie.title}
                   className="w-7 h-10 object-cover rounded-md" />
 
                 {/* Title + trend */}
-                <div className="flex items-center gap-1.5 min-w-0 pl-2">
+                <div className="flex items-center gap-1.5 min-w-0 pl-2 overflow-hidden">
                   <span className="text-sm font-medium text-ink-primary truncate">{movie.title}</span>
                   {trend !== 0 && (
                     <span className={`text-[10px] font-bold flex-shrink-0 ${trend > 0 ? 'text-win' : 'text-lose'}`}>

@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useStore } from '../../store/useStore'
 import { MOVIES, IMDB_URLS } from '../../lib/movies'
+import PosterImage from './PosterImage'
 
 const OMDB_KEY = 'd749e3a3'
 const cache = {}
@@ -72,10 +73,10 @@ export default function MovieModal() {
 
             {/* Header — poster centered like v1 */}
             <div className="flex gap-4 p-5 pb-4 border-b border-border flex-shrink-0" style={{ background: '#0e0e10' }}>
-              <img
-                src={poster || movie.img}
+              <PosterImage
+                movieId={movie.id}
+                fallbackSrc={poster || movie.img}
                 alt={movie.title}
-                onError={e => { e.target.src = movie.img }}
                 className="rounded-xl flex-shrink-0 object-cover"
                 style={{ width: 90, height: 135, boxShadow: '0 8px 24px rgba(0,0,0,0.6)' }}
               />

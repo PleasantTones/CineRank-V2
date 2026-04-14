@@ -6,6 +6,7 @@ import { MovieListSkeleton } from '../components/UI/Skeleton'
 import { generateShareCard } from '../lib/shareCard'
 import { useStore } from '../store/useStore'
 import { MOVIES, PLAYER_COLORS } from '../lib/movies'
+import PosterImage from '../components/UI/PosterImage'
 
 export default function MyMovies() {
   const { player, players, markSeen, markUnseen } = useStore()
@@ -96,7 +97,7 @@ export default function MyMovies() {
                   className="flex-1 text-center"
                 >
                   <div className="relative mx-auto w-16 h-24 rounded-xl overflow-hidden mb-2 hover:scale-105 transition-transform duration-200 cursor-pointer" onClick={() => openMovieModal(m.id)}>
-                    <img src={m.img} alt={m.title} className="w-full h-full object-cover" />
+                    <PosterImage movieId={m.id} fallbackSrc={m.img} alt={m.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                     <div className="absolute top-1 left-1 text-sm">
                       {['🥇','🥈','🥉'][i]}
                     </div>
@@ -162,7 +163,7 @@ export default function MyMovies() {
                     {i < 3 ? ['🥇','🥈','🥉'][i] : `#${i+1}`}
                   </span>
                 )}
-                <img src={movie.img} alt={movie.title} className="w-9 h-14 object-cover rounded-lg flex-shrink-0" />
+                <PosterImage movieId={movie.id} fallbackSrc={movie.img} alt={movie.title} className="w-9 h-14 object-cover rounded-lg flex-shrink-0" />
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-semibold text-ink-primary truncate">{movie.title}</p>
                   {tab === 'rankings' && r?.matches > 0 && (

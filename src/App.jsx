@@ -14,15 +14,16 @@ import Leaderboard from './pages/Leaderboard'
 import MyMovies from './pages/MyMovies'
 import Friends from './pages/Friends'
 import Arcade from './pages/Arcade'
-import Hall from './pages/Hall'
+const Hall = React.lazy(() => import('./pages/Hall'))
 import { useStore } from './store/useStore'
 import { useState } from 'react'
 import { sbFetch } from './lib/supabase'
 import { PLAYERS, MOVIES } from './lib/movies'
+import { prefetchPosters } from './lib/posters'
 
 export default function App() {
   const location = useLocation()
-  const { player, players, loadPlayerFromDB, vote } = useStore()
+  const { player, players, loadPlayerFromDB } = useStore()
   const isHall = location.pathname === '/hall'
 
   const [dbLoaded, setDbLoaded] = useState(false)
@@ -42,6 +43,9 @@ export default function App() {
     // Show UI immediately from localStorage, then sync DB
     setDbLoaded(true)
     load()
+    // Background-fetch sharp OMDB poster URLs (first 20 most-used movies first)
+    prefetchPosters(MOVIES.slice(0, 20).map(m => m.id))
+    setTimeout(() => prefetchPosters(MOVIES.slice(20).map(m => m.id)), 3000)
   }, [])
 
   return (
@@ -59,6 +63,7 @@ export default function App() {
 
       <main className={`flex-1 min-h-0 overflow-hidden ${isHall ? '' : 'pb-24'}`}>
         <AnimatePresence mode="wait">
+          <React.Suspense fallback={<div className="flex-1 flex items-center justify-center"><span className="text-ink-muted text-sm">Loading Hall...</span></div>}>
           <Routes location={location} key={location.pathname}>
             <Route path="/"            element={<Navigate to="/vote" replace />} />
             <Route path="/vote"        element={<Vote />} />
@@ -68,6 +73,7 @@ export default function App() {
             <Route path="/arcade"      element={<Arcade />} />
             <Route path="/hall"        element={<Hall />} />
           </Routes>
+          </React.Suspense>
         </AnimatePresence>
       </main>
 

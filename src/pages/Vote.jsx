@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import PageWrapper from '../components/UI/PageWrapper'
 import MatchupStats from '../components/Vote/MatchupStats'
 import { openMovieModal } from '../components/UI/MovieModal'
+import PosterImage from '../components/UI/PosterImage'
 import { showToast } from '../components/UI/Toast'
 import { spawnConfetti } from '../components/UI/Confetti'
 import { playPop } from '../lib/sounds'
@@ -73,21 +74,18 @@ function MovieCard({ movie, rating, onPick, onUnseen, flash }) {
         onClick={() => openMovieModal(movie.id)}
         style={{ minHeight: 0 }}
       >
-        <motion.img
-          src={movie.img}
-          alt={movie.title}
+        <motion.div
           animate={{ scale: hovered ? 1.04 : 1 }}
           transition={{ duration: 0.3, ease: [0.25, 0.1, 0.25, 1] }}
-          className="w-full h-full object-cover rounded-xl"
-          style={{
-            maxWidth: 200,
-            aspectRatio: '2/3',
-            objectFit: 'cover',
-            boxShadow: '0 8px 32px rgba(0,0,0,0.6)',
-            imageRendering: 'auto',
-          }}
-          draggable={false}
-        />
+          style={{ maxWidth: 200, width: '100%', aspectRatio: '2/3', borderRadius: 12, overflow: 'hidden', boxShadow: '0 8px 32px rgba(0,0,0,0.6)', flexShrink: 0 }}
+        >
+          <PosterImage
+            movieId={movie.id}
+            fallbackSrc={movie.img}
+            alt={movie.title}
+            style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+          />
+        </motion.div>
       </div>
 
       {/* Info + buttons — always below poster, never overlapping */}
@@ -285,7 +283,7 @@ export default function Vote() {
           animate={{ opacity: 1, scale: 1 }}
           exit={{ opacity: 0, scale: 0.97 }}
           transition={{ duration: 0.18 }}
-          className="flex-1 flex gap-3 px-3 pb-2"
+          className="flex-1 flex gap-3 px-3 pb-2 overflow-hidden"
           style={{ minHeight: 0 }}
         >
           <MovieCard movie={movieA} rating={pd.ratings[movieA.id]}
