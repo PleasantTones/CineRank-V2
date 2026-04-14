@@ -106,7 +106,7 @@ export default function Hall() {
     const tFresco  = new THREE.CanvasTexture(makeFrescoTexture(isMobile?512:1024,isMobile?256:512))
 
     // ── Materials ─────────────────────────────────────────────────────────────
-    const mWall    = new THREE.MeshStandardMaterial({ map: tWall, roughness: 0.75, metalness: 0.04 })
+    const mWall    = new THREE.MeshStandardMaterial({ map: tWall, roughness: 0.68, metalness: 0.06 })
     const mFloor   = new THREE.MeshStandardMaterial({ map: tFloor, roughness: 0.55, metalness: 0.08 })
     const mCeiling = new THREE.MeshStandardMaterial({ map: tCeiling, roughness: 0.85, metalness: 0.0 })
     const mGold    = new THREE.MeshBasicMaterial({ map: tGold, color: 0xD4A840 })
@@ -306,12 +306,12 @@ export default function Hall() {
     PLAYERS.forEach((p, i) => {
       const pd = players[p]||{}; const r = pd.ratings||{}
       const top = [...MOVIES].filter(m=>r[m.id]?.matches>0).sort((a,b)=>(r[b.id]?.elo||0)-(r[a.id]?.elo||0))[0]
-      if (top) addPainting(top.id, i%2===0?-1:1, -6 + i*2.4, 0.88, PLAYER_COLORS[p])
+      if (top) addPainting(top.id, i%2===0?-1:1, -9 + i*1.75, 0.88, PLAYER_COLORS[p])  // z=-9,-7.25,-5.5,-3.75,-2
     })
 
     // Gallery of Champions
     const galleryCount = isMobile ? 8 : 14
-    allMovies.slice(0,galleryCount).forEach((m,i) => addPainting(m.id, i%2===0?-1:1, 12+i*1.8))
+    allMovies.slice(0,galleryCount).forEach((m,i) => addPainting(m.id, i%2===0?-1:1, 4+i*1.8))  // start at z=4 after arch
 
     // Inner Sanctum — controversial
     const controversial = [...MOVIES].map(m => {
@@ -322,8 +322,8 @@ export default function Hall() {
     controversial.slice(0,sanctumCount).forEach(({m},i) => addPainting(m.id, i%2===0?-1:1, 36+i*2.6))
 
     // Vault
-    const vaultCount = isMobile ? 4 : 8
-    allMovies.slice(0,vaultCount).forEach((m,i) => addPainting(m.id, i%2===0?-1:1, 63+i*1.6))
+    const vaultCount = isMobile ? 4 : 6  // 6 keeps last painting at z=71, clear of arch at z=75
+    allMovies.slice(0,vaultCount).forEach((m,i) => addPainting(m.id, i%2===0?-1:1, 64+i*1.4))  // start at 64, tighter spacing
 
     // Grand Finale — large end wall portrait
     if (allMovies[0]) {
@@ -337,9 +337,19 @@ export default function Hall() {
       scene.add(pl2)  // PointLight cheaper than SpotLight
 
       const cached = getCachedPoster(king.id)
-      // Show title canvas immediately, upgrade to poster when ready
-      const fallbackCanvas = makeFallback(king.title, '#C8A040')
-      kingMat.map = new THREE.CanvasTexture(fallbackCanvas)
+      // Show immediate title canvas — solid opaque background
+      const fallCanvas = document.createElement('canvas')
+      fallCanvas.width = 400; fallCanvas.height = 600
+      const fctx = fallCanvas.getContext('2d')
+      fctx.fillStyle = '#1a1208'; fctx.fillRect(0,0,400,600)
+      fctx.strokeStyle = '#C8A040'; fctx.lineWidth = 3; fctx.strokeRect(6,6,388,588)
+      fctx.fillStyle = '#C8A040'; fctx.font = 'bold 20px Inter,sans-serif'; fctx.textAlign = 'center'
+      fctx.fillText('👑 #1 ALL-TIME', 200, 260)
+      fctx.fillStyle = '#FFFFFF'; fctx.font = 'bold 22px Inter,sans-serif'
+      const kw = king.title.split(' '), klines = []; let kl = ''
+      kw.forEach(w => { const t = kl ? kl+' '+w : w; if(fctx.measureText(t).width>350){klines.push(kl);kl=w}else kl=t }); klines.push(kl)
+      klines.forEach((l,i) => fctx.fillText(l, 200, 310+i*28))
+      kingMat.map = new THREE.CanvasTexture(fallCanvas)
       kingMat.color.set(0xffffff); kingMat.needsUpdate = true
 
       function applyKingUrl(url) {

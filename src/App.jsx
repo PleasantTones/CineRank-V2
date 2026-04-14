@@ -68,37 +68,47 @@ export default function App() {
   useEffect(() => {
     async function load() {
       try {
-        // Load ratings and matchup history in parallel
+        // Only query columns that exist in v1 Supabase schema
+        // movie_a + movie_b are the v1 pair columns
         const [ratings, matchups] = await Promise.all([
-          sbFetch('/rest/v1/ratings?select=player,movie_id,elo,wins,losses,matches,unseen'),
-          sbFetch('/rest/v1/matchups?select=player,movie_a,movie_b,winner_id,loser_id&limit=10000'),
+          sbFetch('/rest/v1/ratings?select=player,movie_id,elo,wins,losses,matches'),
+          sbFetch('/rest/v1/matchups?select=player,movie_a,movie_b&limit=10000'),
         ])
 
-        // Build per-player played pairs and h2h history from matchups
+        console.log('[CineRank] Loaded ratings:', (ratings||[]).length, 'rows')
+        console.log('[CineRank] Loaded matchups:', (matchups||[]).length, 'rows')
+
+        // Build per-player played pairs from matchups
         const playerMatchups = {}
         PLAYERS.forEach(p => { playerMatchups[p] = { playedPairs: [], h2hHistory: {} } })
         ;(matchups || []).forEach(m => {
-          if (!playerMatchups[m.player]) return
-          // Handle v1 format (movie_a/movie_b) and v2 format (winner_id/loser_id)
-          const a = m.movie_a || m.winner_id
-          const b = m.movie_b || m.loser_id
-          if (!a || !b) return
-          const key = [a, b].sort().join('__')
-          playerMatchups[m.player].playedPairs.push(key)
-          // h2h winner: v2 has winner_id, v1 didn't track winner
-          if (m.winner_id) playerMatchups[m.player].h2hHistory[key] = m.winner_id
+          if (!playerMatchups[m.player] || !m.movie_a || !m.movie_b) return
+          const key = [m.movie_a, m.movie_b].sort().join('__')
+          if (!playerMatchups[m.player].playedPairs.includes(key)) {
+            playerMatchups[m.player].playedPairs.push(key)
+          }
         })
 
-        // Build allData for single atomic update
+        PLAYERS.forEach(p => {
+          const pairs = playerMatchups[p]?.playedPairs || []
+          console.log(`[CineRank] ${p}: ${(ratings||[]).filter(r=>r.player===p).length} ratings, ${pairs.length} matchups`)
+        })
+
+        // Single atomic state update
         const allData = {}
         PLAYERS.forEach(p => {
-          const playerRatings = (ratings || []).filter(r => r.player === p)
-          const { playedPairs, h2hHistory } = playerMatchups[p]
-          allData[p] = { rows: playerRatings, playedPairs, h2hHistory }
+          allData[p] = {
+            rows: (ratings || []).filter(r => r.player === p),
+            playedPairs: playerMatchups[p].playedPairs,
+            h2hHistory: {},
+          }
         })
         loadAllFromDB(allData)
-      } catch(e) { console.error('Load error:', e) }
-      finally { setDbLoaded(true) }
+      } catch(e) {
+        console.error('[CineRank] Load error:', e)
+      } finally {
+        setDbLoaded(true)
+      }
     }
     // Show UI immediately from localStorage, then sync DB
     setDbLoaded(true)
