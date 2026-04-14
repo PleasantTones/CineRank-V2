@@ -5,6 +5,7 @@ import { openMovieModal } from '../components/UI/MovieModal'
 import { MovieListSkeleton } from '../components/UI/Skeleton'
 import { generateShareCard } from '../lib/shareCard'
 import { useStore } from '../store/useStore'
+import { sbFetch } from '../lib/supabase'
 import { MOVIES, PLAYER_COLORS, getAllMovies } from '../lib/movies'
 import PosterImage from '../components/UI/PosterImage'
 
@@ -217,7 +218,23 @@ export default function MyMovies() {
                     <span className="text-gold font-bold font-mono text-sm">{r?.elo ?? 1000}</span>
                   )}
                   <button
-                    onClick={() => isSeen ? markUnseen(movie.id) : markSeen(movie.id)}
+                    onClick={() => {
+                        const nowUnseen = isSeen
+                        if (nowUnseen) markUnseen(movie.id); else markSeen(movie.id)
+                        // Persist seen/unseen to Supabase
+                        if (player && ratings[movie.id] !== undefined) {
+                          const r = ratings[movie.id] || {}
+                          sbFetch('/rest/v1/ratings', {
+                            method: 'POST', prefer: 'resolution=merge-duplicates',
+                            body: JSON.stringify({
+                              id: `${player}_${movie.id}`, player, movie_id: movie.id,
+                              elo: r.elo ?? 1000, wins: r.wins ?? 0,
+                              losses: r.losses ?? 0, matches: r.matches ?? 0,
+                              unseen: nowUnseen,
+                            })
+                          }).catch(() => {})
+                        }
+                      }}
                     className={`text-[10px] font-semibold px-2.5 py-1.5 rounded-lg border transition-all ${
                       isSeen
                         ? 'border-border text-ink-muted hover:border-lose/50 hover:text-lose'

@@ -213,7 +213,20 @@ export default function Vote() {
     markUnseen(movieId)
     setVoteCount(c => c + 1)
     showToast('Marked as unseen — skipping matchup')
-  }, [markUnseen])
+    // Persist to Supabase so it survives page reloads
+    if (player && pd) {
+      const r = pd.ratings[movieId] || {}
+      sbFetch('/rest/v1/ratings', {
+        method: 'POST', prefer: 'resolution=merge-duplicates',
+        body: JSON.stringify({
+          id: `${player}_${movieId}`, player, movie_id: movieId,
+          elo: r.elo ?? 1000, wins: r.wins ?? 0,
+          losses: r.losses ?? 0, matches: r.matches ?? 0,
+          unseen: true,
+        })
+      }).catch(() => {})
+    }
+  }, [markUnseen, player, pd])
 
   const handleSkip = useCallback(() => {
     setStreak(0)
