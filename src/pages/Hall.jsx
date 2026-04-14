@@ -137,57 +137,42 @@ export default function Hall() {
       const cz = HL / 2 - 5
       mesh(new THREE.PlaneGeometry(HW*2, HL+10), mFloor,   0, 0,  cz, -Math.PI/2)
 
-      // Grand red carpet runner — rich texture with woven pile and ornate border
+      // Grand red carpet — fast gradient-based (no per-pixel loop)
       function makeGrandCarpet() {
-        const W = 512, H = 512
+        const W = 256, H = 256  // smaller = faster GPU upload
         const cc = document.createElement('canvas'); cc.width = W; cc.height = H
         const ctx = cc.getContext('2d')
 
-        // Deep crimson base
+        // Crimson base
         ctx.fillStyle = '#6B0C0C'; ctx.fillRect(0, 0, W, H)
 
-        // Woven pile texture — alternating dark/light rows to simulate cut pile
-        const id = ctx.getImageData(0, 0, W, H)
-        const d = id.data
+        // Pile rows — simple horizontal stripes to simulate weave (no random, fast)
         for (let y = 0; y < H; y++) {
-          for (let x = 0; x < W; x++) {
-            const i = (y * W + x) * 4
-            // Herringbone weave: alternating diagonal stripes
-            const diag = (x + y) % 8
-            const fiber = Math.sin(x * 0.8) * Math.cos(y * 1.2) * 18
-            const row = (y % 4 < 2) ? 12 : -8
-            const noise = (Math.random() - 0.5) * 10
-            const bright = fiber + row + noise
-            d[i]   = Math.max(60,  Math.min(180, 107 + bright))
-            d[i+1] = Math.max(4,   Math.min(40,  12  + bright * 0.1))
-            d[i+2] = Math.max(4,   Math.min(40,  12  + bright * 0.1))
-            d[i+3] = 255
-          }
+          const bright = (y % 6 < 3) ? 0.18 : 0.0
+          ctx.fillStyle = `rgba(180,20,20,${bright})`
+          ctx.fillRect(0, y, W, 1)
         }
-        ctx.putImageData(id, 0, 0)
+        // Diagonal highlight bands
+        for (let i = -W; i < W*2; i += 16) {
+          ctx.strokeStyle = 'rgba(140,30,30,0.15)'
+          ctx.lineWidth = 6
+          ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i + H, H); ctx.stroke()
+        }
 
-        // Ornate gold border — outer frame
-        ctx.strokeStyle = 'rgba(200,160,48,0.9)'; ctx.lineWidth = 14
-        ctx.strokeRect(7, 7, W-14, H-14)
-        // Inner border line
-        ctx.strokeStyle = 'rgba(200,160,48,0.5)'; ctx.lineWidth = 4
-        ctx.strokeRect(20, 20, W-40, H-40)
-        // Corner diamond ornaments
-        const drawDiamond = (cx, cy, size) => {
-          ctx.fillStyle = 'rgba(200,160,48,0.75)'
+        // Gold border
+        ctx.strokeStyle = 'rgba(200,160,48,0.9)'; ctx.lineWidth = 10
+        ctx.strokeRect(5, 5, W-10, H-10)
+        ctx.strokeStyle = 'rgba(200,160,48,0.4)'; ctx.lineWidth = 3
+        ctx.strokeRect(14, 14, W-28, H-28)
+
+        // Corner diamonds
+        const dia = (cx, cy, s) => {
+          ctx.fillStyle = 'rgba(200,160,48,0.8)'
           ctx.beginPath()
-          ctx.moveTo(cx, cy - size); ctx.lineTo(cx + size, cy)
-          ctx.lineTo(cx, cy + size); ctx.lineTo(cx - size, cy)
+          ctx.moveTo(cx, cy-s); ctx.lineTo(cx+s, cy); ctx.lineTo(cx, cy+s); ctx.lineTo(cx-s, cy)
           ctx.closePath(); ctx.fill()
         }
-        for (const [cx, cy] of [[28,28],[W-28,28],[28,H-28],[W-28,H-28]]) drawDiamond(cx, cy, 10)
-        // Center medallion hint
-        ctx.beginPath()
-        ctx.arc(W/2, H/2, 32, 0, Math.PI*2)
-        ctx.strokeStyle = 'rgba(160,100,20,0.3)'; ctx.lineWidth = 2; ctx.stroke()
-        ctx.beginPath()
-        ctx.arc(W/2, H/2, 20, 0, Math.PI*2)
-        ctx.strokeStyle = 'rgba(160,100,20,0.2)'; ctx.stroke()
+        for (const [cx,cy] of [[20,20],[W-20,20],[20,H-20],[W-20,H-20]]) dia(cx, cy, 8)
 
         return cc
       }
