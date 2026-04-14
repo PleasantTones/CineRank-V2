@@ -1,6 +1,7 @@
 import React, { useMemo } from 'react'
 import { motion } from 'framer-motion'
 import PageWrapper from '../components/UI/PageWrapper'
+import { openMovieModal } from '../components/UI/MovieModal'
 import { CardSkeleton } from '../components/UI/Skeleton'
 import { useStore } from '../store/useStore'
 import { MOVIES, PLAYERS, PLAYER_COLORS } from '../lib/movies'
@@ -81,7 +82,7 @@ export default function Friends() {
 
         {/* Agreement with group #1 */}
         {globalTop && (
-          <div className="bg-surface border border-border rounded-2xl p-4">
+          <div className="bg-surface border border-border rounded-2xl p-4 hover:border-gold/30 hover:-translate-y-0.5 transition-all duration-200">
             <p className="text-[10px] font-bold text-ink-muted tracking-widest uppercase mb-3">
               Who agrees the group #1 is <span className="text-gold">{globalTop.title}</span>?
             </p>
@@ -100,7 +101,7 @@ export default function Friends() {
 
         {/* Most controversial */}
         {controversialMovie && (
-          <div className="flex items-center gap-3 bg-surface border border-border rounded-2xl p-4">
+          <div className="flex items-center gap-3 bg-surface border border-border rounded-2xl p-4 cursor-pointer hover:border-gold/30 transition-colors" onClick={() => openMovieModal(controversialMovie.movie.id)}>
             <img src={controversialMovie.movie.img} className="w-9 h-14 object-cover rounded-lg flex-shrink-0" />
             <div className="flex-1 min-w-0">
               <p className="text-[10px] font-bold text-ink-muted uppercase tracking-widest mb-0.5">Most divisive</p>
@@ -123,7 +124,7 @@ export default function Friends() {
               const wr = totalM > 0 ? Math.round(totalW/totalM*100) : 0
               return (
                 <motion.div key={p} initial={{ opacity:0,x:-8 }} animate={{ opacity:1,x:0 }} transition={{ delay:i*0.06 }}
-                  className="bg-surface border border-border rounded-2xl p-4">
+                  className="bg-surface border border-border rounded-2xl p-4 hover:border-gold/30 hover:-translate-y-0.5 transition-all duration-200">
                   <div className="flex items-center gap-3 mb-3">
                     <div className="w-9 h-9 rounded-full flex items-center justify-center font-black text-sm text-black flex-shrink-0"
                       style={{ background: PLAYER_COLORS[p] }}>{p[0]}</div>

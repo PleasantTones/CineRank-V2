@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useStore } from '../../store/useStore'
-import { MOVIES } from '../../lib/movies'
+import { MOVIES, IMDB_URLS } from '../../lib/movies'
 
 const OMDB_KEY = 'd749e3a3'
+const cache = {}
 
 let openFn = null
 export function openMovieModal(movieId) { if (openFn) openFn(movieId) }
@@ -22,16 +23,26 @@ export default function MovieModal() {
   const movie = movieId ? MOVIES.find(m => m.id === movieId) : null
   const pd = player ? players[player] : null
   const rating = movie && pd ? pd.ratings[movie.id] : null
+  const imdbUrl = movieId ? IMDB_URLS[movieId] : null
 
   useEffect(() => {
     if (!movie) return
+    if (cache[movie.id]) { setOmdb(cache[movie.id]); return }
     setLoading(true)
-    fetch(`https://www.omdbapi.com/?apikey=${OMDB_KEY}&t=${encodeURIComponent(movie.title)}&type=movie`)
+    const imdbId = imdbUrl?.match(/tt\d+/)?.[0]
+    const url = imdbId
+      ? `https://www.omdbapi.com/?apikey=${OMDB_KEY}&i=${imdbId}&plot=short`
+      : `https://www.omdbapi.com/?apikey=${OMDB_KEY}&t=${encodeURIComponent(movie.title)}&type=movie`
+    fetch(url)
       .then(r => r.json())
-      .then(d => { if (d.Response === 'True') setOmdb(d) })
+      .then(d => { if (d.Response === 'True') { cache[movie.id] = d; setOmdb(d) } })
       .catch(() => {})
       .finally(() => setLoading(false))
   }, [movie?.id])
+
+  const imdbRating = omdb?.imdbRating && omdb.imdbRating !== 'N/A' ? omdb.imdbRating : null
+  const rtRating = omdb?.Ratings?.find(r => r.Source === 'Rotten Tomatoes')?.Value
+  const poster = omdb?.Poster && omdb.Poster !== 'N/A' ? omdb.Poster : movie?.img
 
   return (
     <AnimatePresence>
@@ -40,34 +51,69 @@ export default function MovieModal() {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4"
-          style={{ background: 'rgba(0,0,0,0.85)' }}
+          className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          style={{ background: 'rgba(0,0,0,0.88)' }}
           onClick={e => e.target === e.currentTarget && setMovieId(null)}
         >
           <motion.div
-            initial={{ y: 60, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            exit={{ y: 60, opacity: 0 }}
-            transition={{ type: 'spring', stiffness: 400, damping: 35 }}
-            className="w-full sm:max-w-sm bg-surface rounded-t-3xl sm:rounded-2xl overflow-hidden border border-border max-h-[90vh] flex flex-col"
+            initial={{ opacity: 0, scale: 0.94, y: 16 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.94, y: 16 }}
+            transition={{ type: 'spring', stiffness: 420, damping: 32 }}
+            className="w-full max-w-sm bg-surface rounded-2xl overflow-hidden border border-border relative"
+            style={{ maxHeight: '90dvh', display: 'flex', flexDirection: 'column' }}
           >
-            {/* Poster header */}
-            <div className="relative h-56 flex-shrink-0">
-              <img src={movie.img} alt={movie.title} className="w-full h-full object-cover" />
-              <div className="absolute inset-0 bg-gradient-to-t from-surface via-surface/40 to-transparent" />
-              <button
-                onClick={() => setMovieId(null)}
-                className="absolute top-3 right-3 w-8 h-8 rounded-full bg-black/50 flex items-center justify-center text-white/80 hover:text-white text-sm"
-              >✕</button>
-              <div className="absolute bottom-0 left-0 right-0 p-4">
-                <h2 className="text-lg font-bold text-white leading-tight">{movie.title}</h2>
-                {omdb?.Year && <p className="text-xs text-white/60 mt-0.5">{omdb.Year} · {omdb.Runtime}</p>}
+            {/* Close button */}
+            <button
+              onClick={() => setMovieId(null)}
+              className="absolute top-3 right-3 z-10 w-8 h-8 rounded-full flex items-center justify-center text-ink-muted hover:text-ink-primary transition-colors"
+              style={{ background: 'rgba(0,0,0,0.5)' }}
+            >✕</button>
+
+            {/* Header — poster centered like v1 */}
+            <div className="flex gap-4 p-5 pb-4 border-b border-border flex-shrink-0" style={{ background: '#0e0e10' }}>
+              <img
+                src={poster || movie.img}
+                alt={movie.title}
+                onError={e => { e.target.src = movie.img }}
+                className="rounded-xl flex-shrink-0 object-cover"
+                style={{ width: 90, height: 135, boxShadow: '0 8px 24px rgba(0,0,0,0.6)' }}
+              />
+              <div className="flex flex-col justify-center gap-1.5 min-w-0">
+                <h2 className="text-base font-bold text-ink-primary leading-tight">
+                  {omdb?.Title || movie.title}
+                </h2>
+                {omdb && (
+                  <p className="text-[11px] text-ink-muted">
+                    {[omdb.Year, omdb.Rated, omdb.Runtime].filter(x => x && x !== 'N/A').join(' · ')}
+                  </p>
+                )}
+                {loading && <p className="text-[11px] text-ink-muted">Loading...</p>}
+
+                {/* IMDb + RT badges */}
+                {(imdbRating || rtRating) && (
+                  <div className="flex items-center gap-2 mt-1 flex-wrap">
+                    {imdbRating && (
+                      <div className="flex items-center gap-1.5">
+                        <span className="px-1.5 py-0.5 rounded text-[10px] font-black" style={{ background: '#f5c518', color: '#000' }}>IMDb</span>
+                        <span className="text-sm font-bold" style={{ color: '#f5c518' }}>{imdbRating}</span>
+                        <span className="text-[10px] text-ink-muted">/10</span>
+                      </div>
+                    )}
+                    {rtRating && (
+                      <div className="flex items-center gap-1 px-2 py-0.5 rounded-full" style={{ background: 'rgba(248,113,113,0.15)', border: '1px solid rgba(248,113,113,0.3)' }}>
+                        <span className="text-xs">🍅</span>
+                        <span className="text-xs font-bold text-lose">{rtRating}</span>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
 
-            {/* Content */}
-            <div className="overflow-y-auto overscroll-contain flex-1 p-4 space-y-4">
-              {/* Your stats */}
+            {/* Body */}
+            <div className="overflow-y-auto overscroll-contain no-scrollbar flex-1 p-5 space-y-4">
+              {/* ELO stats */}
               {rating && rating.matches > 0 && (
                 <div className="grid grid-cols-3 gap-2">
                   {[
@@ -76,46 +122,51 @@ export default function MovieModal() {
                     { label: 'Matchups', value: rating.matches },
                   ].map(s => (
                     <div key={s.label} className="bg-raised rounded-xl p-3 text-center">
-                      <div className="text-sm font-bold text-gold font-mono">{s.value}</div>
+                      <div className="text-base font-bold text-gold font-mono">{s.value}</div>
                       <div className="text-[10px] text-ink-muted mt-0.5">{s.label}</div>
                     </div>
                   ))}
                 </div>
               )}
 
-              {/* OMDB data */}
-              {loading && <p className="text-xs text-ink-muted text-center py-4">Loading details...</p>}
+              {/* Plot */}
+              {omdb?.Plot && omdb.Plot !== 'N/A' && (
+                <p className="text-sm text-ink-secondary leading-relaxed">{omdb.Plot}</p>
+              )}
+
+              {/* Details grid */}
               {omdb && (
-                <div className="space-y-3">
-                  {omdb.Plot && omdb.Plot !== 'N/A' && (
-                    <p className="text-sm text-ink-secondary leading-relaxed">{omdb.Plot}</p>
-                  )}
-                  <div className="grid grid-cols-2 gap-2 text-xs">
-                    {[
-                      { label: 'Director', value: omdb.Director },
-                      { label: 'Genre', value: omdb.Genre?.split(',')[0] },
-                      { label: 'Rating', value: omdb.Rated },
-                      { label: 'IMDb', value: omdb.imdbRating !== 'N/A' ? `${omdb.imdbRating}/10` : null },
-                    ].filter(x => x.value && x.value !== 'N/A').map(x => (
-                      <div key={x.label} className="bg-raised rounded-xl p-3">
-                        <div className="text-ink-muted mb-0.5">{x.label}</div>
-                        <div className="font-semibold text-ink-primary truncate">{x.value}</div>
-                      </div>
-                    ))}
-                  </div>
-                  {omdb.Ratings?.length > 0 && (
-                    <div className="flex gap-2 flex-wrap">
-                      {omdb.Ratings.map(r => (
-                        <div key={r.Source} className="bg-raised rounded-lg px-3 py-1.5 text-xs">
-                          <span className="text-ink-muted">{r.Source.replace('Internet Movie Database','IMDb').replace('Rotten Tomatoes','RT')}: </span>
-                          <span className="font-bold text-ink-primary">{r.Value}</span>
-                        </div>
-                      ))}
+                <div className="space-y-0 rounded-xl overflow-hidden border border-border">
+                  {[
+                    { label: 'Director', value: omdb.Director },
+                    { label: 'Cast', value: omdb.Actors },
+                    { label: 'Genre', value: omdb.Genre },
+                    { label: 'Release', value: omdb.Released },
+                  ].filter(x => x.value && x.value !== 'N/A').map((x, i, arr) => (
+                    <div key={x.label} className={`flex gap-3 px-4 py-3 ${i < arr.length - 1 ? 'border-b border-border' : ''}`}
+                      style={{ background: i % 2 === 0 ? '#111113' : '#0e0e10' }}>
+                      <span className="text-[10px] font-bold text-ink-muted uppercase tracking-widest w-14 flex-shrink-0 pt-0.5">{x.label}</span>
+                      <span className="text-xs text-ink-primary flex-1">{x.value}</span>
                     </div>
-                  )}
+                  ))}
                 </div>
               )}
             </div>
+
+            {/* IMDb button */}
+            {imdbUrl && (
+              <div className="flex-shrink-0 p-4 pt-0">
+                <a
+                  href={imdbUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center justify-center gap-2 w-full py-3 rounded-xl font-bold text-sm transition-all hover:opacity-90 active:scale-98"
+                  style={{ background: '#f5c518', color: '#000' }}
+                >
+                  View on IMDb ↗
+                </a>
+              </div>
+            )}
           </motion.div>
         </motion.div>
       )}

@@ -34,44 +34,69 @@ function pickPair(ratings, playedPairs) {
 }
 
 function MovieCard({ movie, rating, onPick, onUnseen, flash }) {
+  const [hovered, setHovered] = useState(false)
+
   return (
     <motion.div
       layout
-      className="relative flex-1 rounded-2xl overflow-hidden"
-      style={{ minWidth: 0, minHeight: 0, alignSelf: 'stretch' }}
+      onHoverStart={() => setHovered(true)}
+      onHoverEnd={() => setHovered(false)}
+      animate={{
+        y: hovered ? -4 : 0,
+        boxShadow: hovered
+          ? '0 16px 48px rgba(0,0,0,0.7), 0 0 60px rgba(200,160,64,0.08)'
+          : '0 4px 16px rgba(0,0,0,0.5)',
+      }}
+      transition={{ duration: 0.2 }}
+      className="relative flex-1 rounded-2xl overflow-hidden flex flex-col"
+      style={{
+        minWidth: 0,
+        minHeight: 0,
+        background: '#141416',
+        border: flash ? '2px solid #4ADE80' : hovered ? '1px solid #6a5a20' : '1px solid #3a3010',
+        alignSelf: 'stretch',
+      }}
     >
-      {/* Poster — tappable for movie details */}
-      <img
-        src={movie.img}
-        alt={movie.title}
-        className="absolute inset-0 w-full h-full object-cover"
-        draggable={false}
-        onClick={() => openMovieModal(movie.id)}
-        style={{ imageRendering: 'auto' }}
-      />
-
-      {/* Deep gradient — gives buttons clear background */}
-      <div className="absolute inset-x-0 bottom-0 h-2/3 bg-gradient-to-t from-black via-black/80 to-transparent pointer-events-none" />
-
-      {/* Win flash */}
+      {/* Win flash overlay */}
       <AnimatePresence>
         {flash && (
           <motion.div
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            transition={{ duration: 0.15 }}
-            className="absolute inset-0 bg-win/10 border-2 border-win rounded-2xl pointer-events-none"
+            className="absolute inset-0 bg-win/10 z-10 pointer-events-none rounded-2xl"
           />
         )}
       </AnimatePresence>
 
-      {/* Bottom content — title + buttons, no overlap */}
-      <div className="absolute inset-x-0 bottom-0 p-3 flex flex-col gap-2">
-        {/* Title + ELO */}
-        <div className="pointer-events-none">
-          <p className="text-white font-bold text-sm leading-snug line-clamp-2 drop-shadow-lg">
+      {/* Poster — zooms on hover, tap opens modal */}
+      <div
+        className="flex-1 overflow-hidden cursor-pointer flex items-center justify-center p-4 pb-3"
+        onClick={() => openMovieModal(movie.id)}
+        style={{ minHeight: 0 }}
+      >
+        <motion.img
+          src={movie.img}
+          alt={movie.title}
+          animate={{ scale: hovered ? 1.04 : 1 }}
+          transition={{ duration: 0.3, ease: [0.25, 0.1, 0.25, 1] }}
+          className="w-full h-full object-cover rounded-xl"
+          style={{
+            maxWidth: 200,
+            aspectRatio: '2/3',
+            objectFit: 'cover',
+            boxShadow: '0 8px 32px rgba(0,0,0,0.6)',
+            imageRendering: 'auto',
+          }}
+          draggable={false}
+        />
+      </div>
+
+      {/* Info + buttons — always below poster, never overlapping */}
+      <div className="flex flex-col gap-2 px-3 pb-3 flex-shrink-0">
+        <div className="text-center">
+          <p className="text-ink-primary font-semibold text-sm leading-snug line-clamp-2">
             {movie.title}
           </p>
-          <p className="text-gold/70 text-[10px] font-semibold font-mono mt-0.5">
+          <p className="text-ink-muted text-[10px] font-mono mt-1">
             {rating?.elo ?? 1000} ELO
           </p>
         </div>
@@ -79,29 +104,25 @@ function MovieCard({ movie, rating, onPick, onUnseen, flash }) {
         {/* Pick button */}
         <button
           onClick={onPick}
-          className="w-full py-2.5 rounded-xl font-bold text-xs tracking-wide transition-all active:scale-95"
+          className="w-full py-2.5 rounded-xl font-bold text-sm transition-all active:scale-95"
           style={{
-            background: 'linear-gradient(135deg, rgba(200,160,64,0.25), rgba(200,160,64,0.12))',
-            border: '1px solid rgba(200,160,64,0.5)',
+            background: hovered
+              ? 'linear-gradient(135deg, rgba(200,160,64,0.3), rgba(200,160,64,0.18))'
+              : 'linear-gradient(135deg, rgba(200,160,64,0.18), rgba(200,160,64,0.08))',
+            border: '1px solid rgba(200,160,64,0.45)',
             color: '#F0C048',
-            backdropFilter: 'blur(8px)',
-            WebkitBackdropFilter: 'blur(8px)',
-            boxShadow: '0 2px 12px rgba(0,0,0,0.4)',
           }}
         >
           ✓ Pick this movie
         </button>
 
-        {/* Haven't seen button */}
+        {/* Haven't seen */}
         <button
           onClick={onUnseen}
-          className="w-full py-2 rounded-xl text-[10px] font-semibold tracking-wide transition-all active:scale-95"
+          className="w-full py-2 rounded-xl text-[11px] font-medium transition-all active:scale-95 text-ink-muted hover:text-ink-secondary"
           style={{
-            background: 'rgba(0,0,0,0.45)',
-            border: '1px solid rgba(255,255,255,0.12)',
-            color: 'rgba(255,255,255,0.5)',
-            backdropFilter: 'blur(8px)',
-            WebkitBackdropFilter: 'blur(8px)',
+            background: 'rgba(255,255,255,0.04)',
+            border: '1px solid rgba(255,255,255,0.08)',
           }}
         >
           Haven't seen this
@@ -116,7 +137,7 @@ export default function Vote() {
   const [streak, setStreak] = useState(0)
   const [flash, setFlash] = useState(null)
   const [voteCount, setVoteCount] = useState(0)
-  const lastVoteRef = useRef(null) // stores snapshot for undo
+  const lastVoteRef = useRef(null)
   const prevPctRef = useRef(0)
 
   const pd = player ? players[player] : null
@@ -137,12 +158,11 @@ export default function Vote() {
     const side = pair[0].id === winnerId ? 'a' : 'b'
     setFlash(side)
 
-    // Snapshot state BEFORE vote for undo
+    // Snapshot BEFORE vote for real undo
     const snapshot = {
       ratings: JSON.parse(JSON.stringify(pd.ratings)),
       playedPairs: [...(pd.playedPairs || [])],
       matchCount: pd.matchCount,
-      pair: [...pair],
     }
 
     playPop(muted)
@@ -156,7 +176,6 @@ export default function Vote() {
       setStreak(newStreak)
       setVoteCount(c => c + 1)
 
-      // Milestone check
       const newPct = Math.min(100, Math.round((playedCount + 1) / totalPairs * 100))
       const hit = MILESTONES.find(m => newPct >= m && prevPctRef.current < m)
       if (hit) {
@@ -164,11 +183,9 @@ export default function Vote() {
         if (hit === 100) spawnConfetti()
       }
       prevPctRef.current = newPct
-
       if (newStreak === 5)  showToast('🔥 5 vote streak!', 'gold')
       if (newStreak === 10) showToast('⚡ 10 in a row!', 'gold')
 
-      // Save to DB
       const updated = players[player]?.ratings ?? {}
       Promise.all([
         sbFetch('/rest/v1/matchups', {
@@ -190,7 +207,7 @@ export default function Vote() {
   const handleUnseen = useCallback((movieId) => {
     markUnseen(movieId)
     setVoteCount(c => c + 1)
-    showToast('Marked as unseen — skipping this matchup')
+    showToast('Marked as unseen — skipping matchup')
   }, [markUnseen])
 
   const handleSkip = useCallback(() => {
@@ -202,7 +219,6 @@ export default function Vote() {
   const handleUndo = useCallback(() => {
     const snap = lastVoteRef.current
     if (!snap || !player) return
-    // Restore full ELO state from snapshot
     undoVote(player, snap.ratings, snap.playedPairs, snap.matchCount)
     lastVoteRef.current = null
     setStreak(s => Math.max(0, s - 1))
@@ -241,7 +257,6 @@ export default function Vote() {
       <MatchupStats played={playedCount} remaining={remaining} pct={pct}
         ratingA={pd.ratings[movieA.id]} ratingB={pd.ratings[movieB.id]} />
 
-      {/* Streak */}
       <AnimatePresence>
         {streak >= 3 && (
           <motion.div key="streak"
@@ -254,7 +269,6 @@ export default function Vote() {
         )}
       </AnimatePresence>
 
-      {/* H2H badge */}
       {h2hWinner && (
         <div className="mx-4 mb-2 py-1.5 px-3 bg-raised border border-border/50 rounded-xl">
           <p className="text-[10px] text-ink-muted text-center">
@@ -263,44 +277,43 @@ export default function Vote() {
         </div>
       )}
 
-      {/* H2H Cards */}
+      {/* H2H card row */}
       <AnimatePresence mode="wait">
         <motion.div
           key={`${movieA.id}-${movieB.id}`}
-          initial={{ opacity: 0, scale: 0.97 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.97 }}
-          transition={{ duration: 0.16 }}
-          className="flex-1 flex gap-2 px-3 pb-2 overflow-hidden"
+          initial={{ opacity: 0, scale: 0.97 }}
+          animate={{ opacity: 1, scale: 1 }}
+          exit={{ opacity: 0, scale: 0.97 }}
+          transition={{ duration: 0.18 }}
+          className="flex-1 flex gap-3 px-3 pb-2"
           style={{ minHeight: 0 }}
         >
-          <MovieCard
-            movie={movieA} rating={pd.ratings[movieA.id]}
+          <MovieCard movie={movieA} rating={pd.ratings[movieA.id]}
             onPick={() => handlePick(movieA.id)}
             onUnseen={() => handleUnseen(movieA.id)}
-            flash={flash === 'a'}
-          />
-          <div className="flex-shrink-0 self-center flex items-center justify-center w-7 h-7 rounded-full bg-base border border-border z-10">
+            flash={flash === 'a'} />
+
+          <div className="flex-shrink-0 self-center flex items-center justify-center w-8 h-8 rounded-full"
+            style={{ background: '#18181B', border: '1px solid #2A2A2E' }}>
             <span className="text-[9px] font-black text-gold tracking-widest">VS</span>
           </div>
-          <MovieCard
-            movie={movieB} rating={pd.ratings[movieB.id]}
+
+          <MovieCard movie={movieB} rating={pd.ratings[movieB.id]}
             onPick={() => handlePick(movieB.id)}
             onUnseen={() => handleUnseen(movieB.id)}
-            flash={flash === 'b'}
-          />
+            flash={flash === 'b'} />
         </motion.div>
       </AnimatePresence>
 
-      {/* Controls row */}
+      {/* Controls */}
       <div className="flex items-center justify-between px-4 pb-3 pt-1">
-        <button
-          onClick={handleUndo}
-          disabled={!lastVoteRef.current}
-          className="text-[11px] text-ink-muted border border-border rounded-lg px-3 py-2 hover:border-gold/30 hover:text-gold transition-all disabled:opacity-25"
-        >
+        <button onClick={handleUndo} disabled={!lastVoteRef.current}
+          className="text-[11px] text-ink-muted border border-border rounded-lg px-3 py-2 hover:border-gold/30 hover:text-gold transition-all disabled:opacity-25">
           ↩ Undo
         </button>
         <p className="text-[9px] text-ink-muted">Tap poster for details</p>
-        <button onClick={handleSkip} className="text-[11px] text-ink-muted hover:text-ink-secondary transition-colors px-3 py-2">
+        <button onClick={handleSkip}
+          className="text-[11px] text-ink-muted hover:text-ink-secondary transition-colors px-3 py-2">
           Skip →
         </button>
       </div>

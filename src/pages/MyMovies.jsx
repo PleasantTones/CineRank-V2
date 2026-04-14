@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import PageWrapper from '../components/UI/PageWrapper'
+import { openMovieModal } from '../components/UI/MovieModal'
 import { MovieListSkeleton } from '../components/UI/Skeleton'
 import { generateShareCard } from '../lib/shareCard'
 import { useStore } from '../store/useStore'
@@ -14,8 +15,8 @@ export default function MyMovies() {
   const pd = player ? players[player] : null
   const ratings = pd?.ratings ?? {}
 
-  const seen = MOVIES.filter(m => !ratings[m.id]?.unseen)
-  const unseen = MOVIES.filter(m => ratings[m.id]?.unseen)
+  const seen = [...MOVIES].filter(m => !ratings[m.id]?.unseen).sort((a,b) => a.title.localeCompare(b.title))
+  const unseen = [...MOVIES].filter(m => ratings[m.id]?.unseen).sort((a,b) => a.title.localeCompare(b.title))
   const ranked = [...seen]
     .filter(m => ratings[m.id]?.matches > 0)
     .sort((a, b) => ratings[b.id].elo - ratings[a.id].elo)
@@ -94,7 +95,7 @@ export default function MyMovies() {
                   transition={{ delay: i * 0.08 }}
                   className="flex-1 text-center"
                 >
-                  <div className="relative mx-auto w-16 h-24 rounded-xl overflow-hidden mb-2">
+                  <div className="relative mx-auto w-16 h-24 rounded-xl overflow-hidden mb-2 hover:scale-105 transition-transform duration-200 cursor-pointer" onClick={() => openMovieModal(m.id)}>
                     <img src={m.img} alt={m.title} className="w-full h-full object-cover" />
                     <div className="absolute top-1 left-1 text-sm">
                       {['🥇','🥈','🥉'][i]}
@@ -154,7 +155,7 @@ export default function MyMovies() {
                 initial={{ opacity: 0, x: -8 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: Math.min(i * 0.02, 0.3) }}
-                className="flex items-center gap-3 p-3 bg-surface border border-border rounded-xl"
+                className="flex items-center gap-3 p-3 bg-surface border border-border rounded-xl hover:border-gold/30 hover:-translate-y-0.5 transition-all duration-200 cursor-pointer" onClick={() => openMovieModal(movie.id)}
               >
                 {tab === 'rankings' && (
                   <span className="text-xs font-bold text-ink-muted font-mono w-5 text-center flex-shrink-0">
