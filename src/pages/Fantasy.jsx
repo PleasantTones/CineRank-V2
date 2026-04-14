@@ -131,7 +131,10 @@ export default function Fantasy() {
   }, [view, session?.current_pick_index])
 
   // ── Draft state derivations ───────────────────────────────────────────────
-  const draftPlayers = session ? (() => { try { return JSON.parse(session.draft_order) } catch { return draftOrder } })() : draftOrder
+  // draft_order is JSONB — Supabase returns it as a JS array directly (no JSON.parse needed)
+  const rawOrder = session?.draft_order
+  const draftPlayers = (Array.isArray(rawOrder) && rawOrder.length > 0) ? rawOrder
+    : (typeof rawOrder === 'string' ? (() => { try { return JSON.parse(rawOrder) } catch { return draftOrder } })() : draftOrder)
   const currentPickIndex = session?.current_pick_index ?? 0
   const currentRound = getRound(currentPickIndex, draftPlayers.length)
   const currentPickerIdx = getPickerIndex(currentPickIndex, draftPlayers.length)
@@ -202,7 +205,7 @@ export default function Fantasy() {
         method: 'POST', prefer: 'resolution=merge-duplicates',
         body: JSON.stringify({
           id, season: pickingSeason,
-          draft_order: JSON.stringify(draftOrder),
+          draft_order: draftOrder,  // JSONB — store as array directly, not double-stringified
           current_pick_index: 0,
           status: 'active',
         }),
@@ -233,7 +236,7 @@ export default function Fantasy() {
       const nextIdx = currentPickIndex + 1
       const newStatus = nextIdx >= TOTAL_PICKS ? 'complete' : 'active'
       await sbFetch(`/rest/v1/draft_sessions?id=eq.${session.id}`, {
-        method: 'PATCH', prefer: 'resolution=merge-duplicates',
+        method: 'PATCH',
         body: JSON.stringify({ current_pick_index: nextIdx, status: newStatus }),
       })
       setSelectedMovie(null)
@@ -272,7 +275,7 @@ export default function Fantasy() {
       const nextIdx = currentPickIndex + 1
       const newStatus = nextIdx >= TOTAL_PICKS ? 'complete' : 'active'
       await sbFetch(`/rest/v1/draft_sessions?id=eq.${session.id}`, {
-        method: 'PATCH', prefer: 'resolution=merge-duplicates',
+        method: 'PATCH',
         body: JSON.stringify({ current_pick_index: nextIdx, status: newStatus }),
       })
       setSelectedMovie(null); setSelectedPickType(null)
@@ -327,7 +330,7 @@ export default function Fantasy() {
             <div><p className="text-sm font-semibold text-ink-primary">1 Alternate Pick</p><p className="text-xs text-ink-muted">Backup if one of your picks is pulled or moved seasons</p></div>
           </div>
           <div className="mt-2 pt-2 border-t border-border">
-            <p className="text-xs text-ink-muted">Snake format — order reverses each round. Round 5 = Bomb picks, Round 6 = Alternates.</p>
+            <p className="text-xs text-ink-muted">Snake format — order reverses each round. Choose your pick type freely on each turn.</p>
           </div>
         </div>
 
@@ -426,8 +429,8 @@ export default function Fantasy() {
 
   // ── DRAFT BOARD ───────────────────────────────────────────────────────────
   if (view === 'draft') {
-    const roundLabel = currentRound === 5 ? '💣 Bomb Round' : currentRound === 6 ? '🔄 Alternate Round' : `Round ${currentRound}`
-    const pickTypeInfo = PICK_TYPES[currentPickType]
+    const roundLabel = `Round ${currentRound}`
+    const pickTypeInfo = selectedPickType ? PICK_TYPES[selectedPickType] : null
 
     return (
       <PageWrapper>
