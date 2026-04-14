@@ -159,7 +159,7 @@ export default function Admin() {
         return
       }
 
-      setBulkProgress(`Adding ${toAdd.length} movies…`)
+      setBulkProgress(`Found ${inRange.length} valid movies in date range. Adding ${toAdd.length} new ones…`)
 
       // Add each movie — fetch IMDB ID and insert
       let added = 0
@@ -208,13 +208,22 @@ export default function Admin() {
         season,
         active: true,
       }
-      // Also save poster_path from TMDB so posters work without API calls at runtime
+      // Try to save poster_path, fall back gracefully if column doesn't exist
       row.poster_path = tmdbMovie.poster_path || null
-      await sbFetch('/rest/v1/season_movies', {
-        method: 'POST',
-        prefer: 'resolution=merge-duplicates',
-        body: JSON.stringify(row),
-      })
+      try {
+        await sbFetch('/rest/v1/season_movies', {
+          method: 'POST', prefer: 'resolution=merge-duplicates',
+          body: JSON.stringify(row),
+        })
+      } catch(e) {
+        if (e.message?.includes('poster_path') || e.message?.includes('column')) {
+          const { poster_path: _, ...rowNoPoster } = row
+          await sbFetch('/rest/v1/season_movies', {
+            method: 'POST', prefer: 'resolution=merge-duplicates',
+            body: JSON.stringify(rowNoPoster),
+          })
+        } else throw e
+      }
       await loadSeasonMovies()
     } catch(e) {
       setError('Failed to add movie: ' + e.message)
