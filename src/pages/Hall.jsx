@@ -51,7 +51,7 @@ export default function Hall() {
     renderer.shadowMap.enabled = false  // disabled for performance
     renderer.outputColorSpace = THREE.SRGBColorSpace
     renderer.toneMapping = THREE.ACESFilmicToneMapping
-    renderer.toneMappingExposure = 1.15
+    renderer.toneMappingExposure = 0.95  // reduce exposure to avoid yellow cast
 
     // Mobile detection
     const isMobile = window.innerWidth < 768
@@ -89,7 +89,7 @@ export default function Hall() {
       return t
     }
     const texSize = isMobile ? 256 : 512
-    const tFloor   = canvasTex(makeMarbleTexture(texSize,texSize,{baseColor:[175,162,138],veinColor:[135,100,48],veinCount:isMobile?4:8}), 6, 30)
+    const tFloor   = canvasTex(makeMarbleTexture(texSize,texSize,{baseColor:[228,218,198],veinColor:[188,162,118],veinCount:isMobile?3:5}), 6, 30)
     const tWall    = canvasTex(makeMarbleTexture(texSize,texSize,{baseColor:[198,186,162],veinColor:[155,118,50],veinCount:isMobile?3:5}), 1, 1)
     const tCeiling = canvasTex(makeMarbleTexture(texSize,texSize,{baseColor:[188,175,152],veinCount:isMobile?2:3}), 3, 12)
     const tGold    = canvasTex(makeGoldTexture(128,128), 1, 1)
@@ -149,8 +149,13 @@ export default function Hall() {
       add(new THREE.PlaneGeometry(HL+10, 0.14), mGold, xi, 0.07, cz, 0, ry)        // base
     }
     // Floor border strips — slightly above floor to avoid z-fighting
-    add(new THREE.PlaneGeometry(0.14, HL+10), mGold, -HW+0.4, 0.003, cz, -Math.PI/2)
-    add(new THREE.PlaneGeometry(0.14, HL+10), mGold,  HW-0.4, 0.003, cz, -Math.PI/2)
+    // Black baseboard strips like target image
+    const mBlack = new THREE.MeshStandardMaterial({ color: 0x0a0806, roughness: 0.9, metalness: 0.0 })
+    add(new THREE.PlaneGeometry(0.32, HL+10), mBlack, -HW+0.3, 0.12, cz, -Math.PI/2)
+    add(new THREE.PlaneGeometry(0.32, HL+10), mBlack,  HW-0.3, 0.12, cz, -Math.PI/2)
+    // Thin gold line above black baseboard
+    add(new THREE.PlaneGeometry(0.06, HL+10), mGold, -HW+0.22, 0.30, cz, -Math.PI/2)
+    add(new THREE.PlaneGeometry(0.06, HL+10), mGold,  HW-0.22, 0.30, cz, -Math.PI/2)
 
     // ── Transverse arch walls ─────────────────────────────────────────────────
     function archWall(z) {
@@ -197,16 +202,16 @@ export default function Hall() {
       // Chain (desktop only)
       if (!isMobile) add(new THREE.CylinderGeometry(0.015, 0.015, 0.55, 4), mGold, 0, HH - 0.06, z)
 
-      const pl = new THREE.PointLight(0xFFDD90, 2.6, 18, 1.5)
+      const pl = new THREE.PointLight(0xFFCC60, 3.8, 20, 1.4)  // stronger warm pools like target
       pl.position.set(0, cy - 0.2, z)
       scene.add(pl)
       lights.push(pl)
     }
 
     // ── Lighting ──────────────────────────────────────────────────────────────
-    scene.add(new THREE.AmbientLight(0xFFF0D8, 0.32))  // PBR needs less ambient
-    const dir = new THREE.DirectionalLight(0xFFF5E8, 0.5)
-    dir.position.set(1, 6, 12)
+    scene.add(new THREE.AmbientLight(0xFFF8F0, 0.22))  // very low ambient = chandelier glow dominates
+    const dir = new THREE.DirectionalLight(0xFFF5E8, 0.35)
+    dir.position.set(0, 8, 20)
     scene.add(dir)
     // fill light removed for performance
 
