@@ -4,8 +4,6 @@ import PageWrapper from '../components/UI/PageWrapper'
 import { QuickDraw, MemoryMatch, Scramble } from './ArcadeGames'
 import RottenPinball from '../components/Arcade/RottenPinball'
 import PosterBlaster from '../components/Arcade/PosterBlaster'
-import RottenOrFresh from '../components/Arcade/RottenOrFresh'
-import PosterStorm from '../components/Arcade/PosterStorm'
 import CineBreakout from '../components/Arcade/CineBreakout'
 import BoxOfficeSnake from '../components/Arcade/BoxOfficeSnake'
 import PosterFlip from '../components/Arcade/PosterFlip'
@@ -19,10 +17,8 @@ const GAMES = [
   { id: 'scramble',     icon: '🔤', title: 'Scrambled Title',  desc: 'Unscramble the movie title before time runs out. 10 rounds.', component: Scramble },
   { id: 'pinball',      icon: '🎰', title: 'Rotten Pinball',   desc: 'Hit movie poster bumpers with your pinball. Don\'t let the ball drain!', component: RottenPinball },
   { id: 'blaster',      icon: '🚀', title: 'Poster Blaster',   desc: 'Rotate your ship and blast incoming movie posters. Don\'t get hit!', component: PosterBlaster },
-  { id: 'rottenorfresh',icon: '🍅', title: 'Rotten or Fresh?', desc: 'Catch the 🍿 popcorn, dodge the 🍅 tomatoes. Move your basket.', component: RottenOrFresh },
   { id: 'snake',        icon: '🐍', title: 'Box Office Snake',  desc: 'Eat movie posters in order. Arrow keys or swipe to steer.', component: BoxOfficeSnake },
   { id: 'posterflip',   icon: '🧩', title: 'Poster Flip',        desc: 'Slide tiles to reconstruct the movie poster. Fewer moves = more points.', component: PosterFlip },
-  { id: 'storm',        icon: '🌩️', title: 'Poster Storm',       desc: 'Tap top-ranked posters as they fall. Avoid the bad ones!', component: PosterStorm },
   { id: 'breakout',     icon: '🧱', title: 'Cine Breakout',      desc: 'Smash through movie poster bricks. Classic arcade action.', component: CineBreakout },
 ]
 

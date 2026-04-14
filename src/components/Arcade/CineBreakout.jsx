@@ -38,7 +38,8 @@ export default function CineBreakout({ onEnd }) {
   const stateRef = useRef(null)
   const particlesRef = useRef([])
   const rafRef = useRef(null)
-  const paddleXRef = useRef(W/2)  // direct ref for immediate response
+  const paddleXRef = useRef(W/2)
+  const countdownRef = useRef(0)  // 0 = playing, >0 = counting down  // direct ref for immediate response
 
   const getCanvasX = useCallback((clientX)=>{
     const canvas=canvasRef.current; if(!canvas) return W/2
@@ -70,6 +71,7 @@ export default function CineBreakout({ onEnd }) {
     stateRef.current={
       active:true, score:0, lives:3, frame:0,
       ball:{ x:W/2, y:H-120, vx:Math.cos(ang)*BALL_SPEED, vy:Math.sin(ang)*BALL_SPEED },
+      countdown: 0,
       paddleX:W/2,
       bricks:initBricks(pool,imgCache),
       pool, imgCache, level:1, ballLaunched:false
@@ -137,13 +139,23 @@ export default function CineBreakout({ onEnd }) {
       }
 
       // Check win (all bricks cleared)
-      if(s.bricks.every(br=>!br.alive)){
+      if(s.bricks.every(br=>!br.alive) && !s.countdown){
         s.level++
+        s.countdown = 3  // 3 second countdown
         s.bricks=initBricks(s.pool.sort(()=>Math.random()-0.5),s.imgCache)
-        const sp=Math.min(BALL_SPEED*1.8, BALL_SPEED+s.level*0.3)
-        const ang=(-Math.PI/2)+(Math.random()-0.5)*0.6
-        b.x=s.paddleX; b.y=H-80
-        b.vx=Math.cos(ang)*sp; b.vy=Math.sin(ang)*sp
+        b.x=s.paddleX; b.y=H-80; b.vx=0; b.vy=0  // freeze ball
+      }
+      // Countdown between rounds
+      if(s.countdown > 0) {
+        b.x=s.paddleX; b.y=H-80; b.vx=0; b.vy=0  // hold ball
+        if(s.frame % 60 === 0) {  // every second
+          s.countdown--
+          if(s.countdown === 0) {  // launch
+            const sp=Math.min(BALL_SPEED*1.8, BALL_SPEED+s.level*0.3)
+            const ang=(-Math.PI/2)+(Math.random()-0.5)*0.6
+            b.vx=Math.cos(ang)*sp; b.vy=Math.sin(ang)*sp
+          }
+        }
       }
 
       // Particles
@@ -189,6 +201,16 @@ export default function CineBreakout({ onEnd }) {
       ctx.fillStyle='rgba(200,160,255,0.15)'; ctx.beginPath()
       ctx.arc(b.x-b.vx*2,b.y-b.vy*2,BALL_R*0.7,0,Math.PI*2); ctx.fill()
 
+      // Countdown overlay
+      if(s.countdown > 0) {
+        ctx.fillStyle='rgba(0,0,0,0.55)'; ctx.fillRect(0,0,W,H)
+        ctx.fillStyle='#C8A040'; ctx.font='bold 14px Inter'; ctx.textAlign='center'
+        ctx.fillText(`Level ${s.level}`, W/2, H/2-40)
+        ctx.font='black 80px Inter'; ctx.fillStyle='white'
+        ctx.fillText(s.countdown, W/2, H/2+20)
+        ctx.font='13px Inter'; ctx.fillStyle='rgba(200,160,64,0.7)'
+        ctx.fillText('Get ready!', W/2, H/2+55)
+      }
       // HUD
       ctx.fillStyle='rgba(0,0,0,0.6)'; ctx.fillRect(0,0,W,52)
       ctx.fillStyle='rgba(200,160,64,0.9)'; ctx.font='bold 20px Inter'; ctx.textAlign='left'

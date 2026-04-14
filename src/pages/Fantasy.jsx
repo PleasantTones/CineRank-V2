@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
+import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, ReferenceLine } from 'recharts'
 import PageWrapper from '../components/UI/PageWrapper'
 import PosterImage from '../components/UI/PosterImage'
 import { openMovieModal } from '../components/UI/MovieModal'
@@ -93,6 +94,13 @@ export default function Fantasy() {
     setScoringLoading(false)
   }, [])
 
+  // Auto-load scoring when draft is complete
+  useEffect(() => {
+    if (isDraftComplete && picks.length > 0 && Object.keys(financials).length === 0 && getTMDBKey()) {
+      loadScoring(picks, allMovies)
+    }
+  }, [isDraftComplete, picks.length])
+
   // Reset timer whenever the current pick index changes
   useEffect(() => {
     setTimeLeft(180)
@@ -184,6 +192,44 @@ export default function Fantasy() {
       .sort((a, b) => b.total - a.total)
   }
 
+  // Build cumulative earnings chart data — sorted by release date
+  function buildChartData(draftPicks, players, fin) {
+    // Get all scored movies sorted by release date
+    const scoredPicks = draftPicks
+      .filter(pk => pk.pick_type !== 'alternate')
+      .map(pk => ({ ...pk, fin: fin[pk.movie_id], releaseDate: fin[pk.movie_id]?.releaseDate || '9999' }))
+      .sort((a, b) => a.releaseDate.localeCompare(b.releaseDate))
+
+    if (!scoredPicks.length) return []
+
+    // Running cumulative totals per player
+    const running = {}
+    players.forEach(p => { running[p] = 0 })
+
+    const points = []
+    scoredPicks.forEach(pk => {
+      if (!pk.fin) return  // no financial data fetched for this movie yet
+      const profit = pk.fin?.profit ?? 0
+      if (pk.pick_type === 'season') {
+        running[pk.player] = (running[pk.player] || 0) + profit
+      } else if (pk.pick_type === 'bomb') {
+        players.filter(p => p !== pk.player).forEach(other => {
+          running[other] = (running[other] || 0) + profit
+        })
+      }
+      // Only add point if we have real financial data
+      if (pk.fin?.budget > 0 || pk.fin?.revenue > 0) {
+        const movie = allMovies.find(m => m.id === pk.movie_id)
+        points.push({
+          label: movie?.title?.slice(0, 12) || pk.movie_id,
+          date: pk.releaseDate,
+          ...Object.fromEntries(players.map(p => [p, Math.round((running[p] || 0) / 1_000_000 * 10) / 10]))
+        })
+      }
+    })
+    return points
+  }
+
   const myTypeCounts = getPlayerPickTypeCounts(player)
   const availablePickTypes = [
     { type: 'season',    remaining: 4 - myTypeCounts.season    },
@@ -192,7 +238,11 @@ export default function Fantasy() {
   ].filter(t => t.remaining > 0)
 
   const pickedMovieIds = new Set(picks.map(p => p.movie_id))
-  const availableMovies = allMovies.filter(m => !pickedMovieIds.has(m.id))
+  // Only show movies from the draft's specific season in the draft pool
+  const draftSeasonMovies = session
+    ? allMovies.filter(m => m.dynamic && m.season === session.season)
+    : allMovies
+  const availableMovies = draftSeasonMovies.filter(m => !pickedMovieIds.has(m.id))
   const myPicks = picks.filter(p => p.player === player)
 
   function getPlayerPicks(playerName) {
@@ -257,7 +307,7 @@ export default function Fantasy() {
       const latest = await sbFetch(`/rest/v1/draft_sessions?id=eq.${session.id}&limit=1`)
       if (latest?.[0]?.current_pick_index !== currentPickIndex) return  // already picked
     } catch { return }
-    const available = allMovies.filter(m => !pickedMovieIds.has(m.id))
+    const available = draftSeasonMovies.filter(m => !pickedMovieIds.has(m.id))
     if (!available.length) return
     const randomMovie = available[Math.floor(Math.random() * available.length)]
     // Pick whatever type has remaining slots — priority: season → bomb → alternate
@@ -400,7 +450,7 @@ export default function Fantasy() {
           </div>
           <div className="flex items-start gap-2">
             <span className="text-lg">💣</span>
-            <div><p className="text-sm font-semibold text-ink-primary">1 Bomb Pick</p><p className="text-xs text-ink-muted">Earns/loses for all other players. Pick a real bomb to hurt them.</p></div>
+            <div><p className="text-sm font-semibold text-ink-primary">1 Bomb Pick</p><p className="text-xs text-ink-muted">Your bomb movie's P&L is applied to all other players — not you. Pick a real bomb to drag everyone else down.</p></div>
           </div>
           <div className="flex items-start gap-2">
             <span className="text-lg">🔄</span>
@@ -737,38 +787,101 @@ export default function Fantasy() {
             )}
           </div>
 
-          {/* Scoring standings */}
+          {/* Standings + Chart */}
+          {scoringLoading && (
+            <div className="bg-surface border border-border rounded-2xl p-4 text-center">
+              <p className="text-xs text-gold animate-pulse">📊 Loading scores from TMDB…</p>
+            </div>
+          )}
+
           {Object.keys(financials).length > 0 && (() => {
             const ranked = calcScores(picks, slatePlayers, financials)
+            const chartData = buildChartData(picks, slatePlayers, financials)
+            const medals = ['🥇','🥈','🥉','4th','5th']
             return (
-              <div className="bg-surface border border-border rounded-2xl overflow-hidden">
-                <div className="px-4 py-2.5 border-b border-border" style={{ background: '#111113' }}>
-                  <p className="text-[10px] font-bold text-ink-muted uppercase tracking-widest">Fantasy Standings</p>
-                  <p className="text-[9px] text-ink-muted">Revenue − (2× budget). Bomb picks go to other players.</p>
-                </div>
-                {ranked.map((row, i) => (
-                  <div key={row.player} className="flex items-center gap-3 px-4 py-3 border-b border-border last:border-0"
-                    style={{ background: i === 0 ? 'rgba(200,160,64,0.06)' : undefined }}>
-                    <span className="text-sm font-black text-ink-muted w-5 font-mono">{i + 1}</span>
-                    <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: PLAYER_COLORS[row.player] }} />
-                    <div className="flex-1">
-                      <p className="text-sm font-bold text-ink-primary">{row.player}</p>
-                      <p className="text-[10px] text-ink-muted">
-                        Picks: {row.seasonProfit !== 0 ? formatMoney(row.seasonProfit) : '—'}
-                        {row.bombEffect !== 0 ? ` · Bomb: ${row.bombEffect > 0 ? '+' : ''}${formatMoney(row.bombEffect)}` : ''}
-                      </p>
+              <>
+                {/* Standings */}
+                <div className="bg-surface border border-border rounded-2xl overflow-hidden">
+                  <div className="px-4 py-2.5 border-b border-border flex items-center justify-between" style={{ background: '#111113' }}>
+                    <div>
+                      <p className="text-[10px] font-bold text-ink-muted uppercase tracking-widest">Fantasy Standings</p>
+                      <p className="text-[9px] text-ink-muted">Revenue − (2× budget) · Bomb picks go to other players</p>
                     </div>
-                    <span className={`text-base font-black font-mono ${row.total >= 0 ? 'text-win' : 'text-lose'}`}>
-                      {row.total >= 0 ? '+' : ''}{formatMoney(row.total) || '$0'}
-                    </span>
+                    <button onClick={() => loadScoring(picks, allMovies)} disabled={scoringLoading}
+                      className="text-[10px] text-gold border border-gold/30 rounded-lg px-2 py-1 hover:bg-gold/10 disabled:opacity-40">
+                      {scoringLoading ? '…' : 'Refresh'}
+                    </button>
                   </div>
-                ))}
-                {!getTMDBKey() && (
-                  <p className="text-xs text-ink-muted text-center py-3">Add TMDB API key in /admin to see scores</p>
+                  {ranked.map((row, i) => (
+                    <div key={row.player} className="flex items-center gap-3 px-4 py-3 border-b border-border last:border-0"
+                      style={{ background: i === 0 ? 'rgba(200,160,64,0.06)' : undefined }}>
+                      <span className="text-sm w-6 text-center flex-shrink-0">{medals[i]}</span>
+                      <div className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ background: PLAYER_COLORS[row.player] }} />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-bold text-ink-primary">{row.player}</p>
+                        <p className="text-[10px] text-ink-muted">
+                          Picks: {row.seasonProfit !== 0 ? formatMoney(row.seasonProfit) : '—'}
+                          {row.bombEffect !== 0 ? ` · Others' bombs: ${row.bombEffect >= 0 ? '+' : ''}${formatMoney(row.bombEffect)}` : ''}
+                        </p>
+                      </div>
+                      <span className={`text-base font-black font-mono flex-shrink-0 ${row.total >= 0 ? 'text-win' : 'text-lose'}`}>
+                        {row.total >= 0 ? '+' : ''}{formatMoney(row.total) || '$0'}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Earnings trend chart */}
+                {chartData.length > 1 && (
+                  <div className="bg-surface border border-border rounded-2xl p-4">
+                    <p className="text-[10px] font-bold text-ink-muted uppercase tracking-widest mb-1">Earnings Trend</p>
+                    <p className="text-[9px] text-ink-muted mb-4">Cumulative P&L as movies release ($M)</p>
+                    <ResponsiveContainer width="100%" height={220}>
+                      <LineChart data={chartData} margin={{ top: 4, right: 8, bottom: 4, left: -16 }}>
+                        <XAxis dataKey="label" tick={{ fontSize: 8, fill: '#606060' }} tickLine={false} axisLine={false} />
+                        <YAxis tick={{ fontSize: 8, fill: '#606060' }} tickLine={false} axisLine={false}
+                          tickFormatter={v => `$${v}M`} />
+                        <ReferenceLine y={0} stroke="rgba(255,255,255,0.1)" strokeDasharray="3 3" />
+                        <Tooltip
+                          contentStyle={{ background: '#18181b', border: '1px solid #2a2a2e', borderRadius: 8, fontSize: 11 }}
+                          formatter={(v, name) => [`${v >= 0 ? '+' : ''}$${v}M`, name]}
+                          labelStyle={{ color: '#a0a0a0', marginBottom: 4 }}
+                        />
+                        {slatePlayers.map(p => (
+                          <Line key={p} type="monotone" dataKey={p}
+                            stroke={PLAYER_COLORS[p]} strokeWidth={2}
+                            dot={{ r: 3, fill: PLAYER_COLORS[p], strokeWidth: 0 }}
+                            activeDot={{ r: 5, strokeWidth: 0 }}
+                            connectNulls />
+                        ))}
+                      </LineChart>
+                    </ResponsiveContainer>
+                    {/* Legend */}
+                    <div className="flex flex-wrap gap-3 mt-2 justify-center">
+                      {slatePlayers.map(p => (
+                        <div key={p} className="flex items-center gap-1">
+                          <div className="w-3 h-0.5 rounded-full" style={{ background: PLAYER_COLORS[p] }} />
+                          <span className="text-[10px] text-ink-muted">{p}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
                 )}
-              </div>
+
+                {chartData.length <= 1 && (
+                  <div className="bg-surface border border-border rounded-2xl p-4 text-center">
+                    <p className="text-xs text-ink-muted">Chart will appear once movies start releasing and box office data is available</p>
+                  </div>
+                )}
+              </>
             )
           })()}
+
+          {!getTMDBKey() && !scoringLoading && Object.keys(financials).length === 0 && (
+            <div className="bg-surface border border-border rounded-2xl p-3 text-center">
+              <p className="text-xs text-ink-muted">Save your TMDB API key in <span className="text-gold">/admin</span> to see live scores</p>
+            </div>
+          )}
 
           {slatePlayers.map(p => {
             const pPicks = picks.filter(pk => pk.player === p)

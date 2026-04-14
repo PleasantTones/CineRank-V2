@@ -24,6 +24,16 @@ const SEASONS = [
   { id: '2026-fall',   label: '2026 Fall (Sep–Dec)' },
 ]
 
+// Infer season from a movie's release date automatically
+function inferSeason(releaseDate) {
+  if (!releaseDate) return null
+  const [year, month] = releaseDate.split('-').map(Number)
+  if (month >= 1 && month <= 4)  return `${year}-winter`
+  if (month >= 5 && month <= 8)  return `${year}-summer`
+  if (month >= 9 && month <= 12) return `${year}-fall`
+  return null
+}
+
 // Generate next unique ID given all already-used IDs
 function nextId(usedIds) {
   const nums = usedIds
@@ -218,7 +228,8 @@ export default function Admin() {
         imdb_id: imdbId, tmdb_id: String(tmdbMovie.id),
         release_date: tmdbMovie.release_date || null,
         poster_path: tmdbMovie.poster_path || null,
-        season, active: true,
+        season: inferSeason(tmdbMovie.release_date) || season,
+        active: true,
       })
       await loadSeasonMovies()
     } catch(e) { setError('Failed to add: ' + e.message) }

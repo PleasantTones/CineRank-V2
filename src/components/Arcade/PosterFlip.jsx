@@ -39,7 +39,7 @@ export default function PosterFlip({ onEnd }) {
   const [imgLoaded, setImgLoaded] = useState(false)
   const [tiles, setTiles] = useState(() => Array.from({ length: TILE_COUNT }, (_, i) => i))
   const [moves, setMoves] = useState(0)
-  const [timeLeft, setTimeLeft] = useState(90)
+  const [elapsed, setElapsed] = useState(0)   // seconds elapsed
   const [score, setScore] = useState(0)
   const [sliding, setSliding] = useState(null)  // tile index being slid
   const imgRef = useRef(null)
@@ -82,7 +82,7 @@ export default function PosterFlip({ onEnd }) {
   useEffect(() => {
     if (phase !== 'playing') return
     if (isSolved(tiles)) {
-      const pts = Math.max(100, Math.round(5000 / Math.max(1, moves) + timeLeft * 20))
+      const pts = Math.max(50, Math.round(8000 / Math.max(1, moves) / Math.max(1, elapsed) * 60))
       setScore(pts)
       setPhase('solved')
     }
@@ -108,7 +108,6 @@ export default function PosterFlip({ onEnd }) {
   const gap = 3
   const boardSize = tileSize * GRID + gap * (GRID - 1)
 
-  const timerColor = timeLeft <= 15 ? '#ef4444' : timeLeft <= 30 ? '#f59e0b' : '#34d399'
 
   return (
     <div className="absolute inset-0 flex flex-col items-center justify-center bg-base p-4 gap-4">
@@ -126,7 +125,7 @@ export default function PosterFlip({ onEnd }) {
           {/* HUD */}
           <div className="w-full flex items-center justify-between px-2" style={{ maxWidth: boardSize }}>
             <div className="text-xs font-bold text-ink-muted">MOVES <span className="text-ink-primary font-mono text-base ml-1">{moves}</span></div>
-            <div className="font-black font-mono text-lg" style={{ color: timerColor }}>{timeLeft}s</div>
+            <div className="font-black font-mono text-lg text-ink-muted">{elapsed}s</div>
             <div className="text-xs font-bold text-ink-muted">TILES <span className="text-gold font-mono text-base ml-1">
               {tiles.filter((t, i) => t === i && t !== TILE_COUNT - 1).length}/{TILE_COUNT - 1}
             </span></div>
@@ -207,7 +206,7 @@ export default function PosterFlip({ onEnd }) {
               {phase === 'solved' && (
                 <div className="text-center">
                   <div className="text-3xl font-black text-gold font-mono">{score} pts</div>
-                  <div className="text-xs text-ink-muted mt-1">{moves} moves · {90 - timeLeft}s</div>
+                  <div className="text-xs text-ink-muted mt-1">{moves} moves · {elapsed}s</div>
                 </div>
               )}
               <div className="flex gap-3">

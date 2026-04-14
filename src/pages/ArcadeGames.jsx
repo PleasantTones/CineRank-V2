@@ -112,22 +112,24 @@ export function MemoryMatch({ onEnd }) {
   }
 
   return (
-    <div className="absolute inset-0 flex flex-col gap-3 p-3">
-      <div className="flex justify-between px-1 flex-shrink-0">
-        <span className="text-gold font-bold font-mono">{score} pts</span>
-        <span className={`font-bold font-mono ${timeLeft <= 10 ? 'text-lose' : 'text-ink-secondary'}`}>{timeLeft}s</span>
+    <div className="absolute inset-0 flex flex-col" style={{padding:'10px 8px 8px'}}>
+      {/* Score + timer bar */}
+      <div className="flex justify-between px-1 mb-2 flex-shrink-0">
+        <span className="text-gold font-bold font-mono text-sm">{score} pts</span>
+        <span className={`font-bold font-mono text-sm ${timeLeft <= 10 ? 'text-lose' : 'text-ink-secondary'}`}>{timeLeft}s</span>
       </div>
-      <div className="flex-1 min-h-0 flex items-center justify-center">
-        <div className="grid grid-cols-4 gap-2 w-full" style={{maxHeight:'100%'}}>
-          {cards.map(card => (
-            <motion.button key={card.id} onClick={() => flip(card)} whileTap={{ scale: 0.94 }}
-              className={`aspect-[2/3] rounded-xl overflow-hidden border-2 transition-all ${card.matched ? 'border-win opacity-60' : card.flipped ? 'border-gold' : 'border-border'}`}>
-              {card.flipped || card.matched
-                ? <img src={card.movie.img} className="w-full h-full object-cover" />
-                : <div className="w-full h-full bg-raised flex items-center justify-center text-2xl">🎬</div>}
-            </motion.button>
-          ))}
-        </div>
+      {/* Grid — fills all remaining space, no aspect ratio, cards fill each cell */}
+      <div className="flex-1 min-h-0 grid grid-cols-4 gap-1.5" style={{
+        gridTemplateRows: 'repeat(3, 1fr)'
+      }}>
+        {cards.map(card => (
+          <motion.button key={card.id} onClick={() => flip(card)} whileTap={{ scale: 0.96 }}
+            className={`rounded-xl overflow-hidden border-2 transition-all w-full h-full ${card.matched ? 'border-win opacity-60' : card.flipped ? 'border-gold' : 'border-border'}`}>
+            {card.flipped || card.matched
+              ? <img src={card.movie.img} className="w-full h-full object-cover" style={{display:'block'}} />
+              : <div className="w-full h-full bg-raised flex items-center justify-center text-xl">🎬</div>}
+          </motion.button>
+        ))}
       </div>
     </div>
   )
