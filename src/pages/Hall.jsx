@@ -79,7 +79,7 @@ export default function Hall() {
       canvas._threeRenderer = renderer
       renderer.outputColorSpace = THREE.SRGBColorSpace
       renderer.toneMapping = THREE.ACESFilmicToneMapping
-      renderer.toneMappingExposure = 0.95
+      renderer.toneMappingExposure = 1.15  // brighter — more gold shimmer
 
       const isMobile = window.innerWidth < 768
 
@@ -93,7 +93,7 @@ export default function Hall() {
       // ── Scene ───────────────────────────────────────────────────────────────
       const scene = new THREE.Scene()
       scene.background = new THREE.Color(0x0d0b08)
-      scene.fog = new THREE.FogExp2(0x0d0b08, isMobile ? 0.05 : 0.032)
+      scene.fog = new THREE.FogExp2(0x0d0b08, isMobile ? 0.042 : 0.020)
 
       // ── Camera ──────────────────────────────────────────────────────────────
       let camera = null
@@ -272,8 +272,8 @@ export default function Hall() {
       }
 
       // Lighting
-      scene.add(new THREE.AmbientLight(0xFFF8F0, 0.40))
-      const dir = new THREE.DirectionalLight(0xFFF8F0, 0.45)
+      scene.add(new THREE.AmbientLight(0xFFF8F0, 0.60))
+      const dir = new THREE.DirectionalLight(0xFFF8F0, 0.65)
       dir.position.set(0, 8, 20)
       scene.add(dir)
 
@@ -346,11 +346,11 @@ export default function Hall() {
       // Grand Finale
       if (allMovies[0]) {
         const king = allMovies[0]
-        const kMat = new THREE.MeshLambertMaterial({ color: 0x1a1004 })
+        const kMat = new THREE.MeshBasicMaterial({ color: 0x1a1004 })
         mesh(new THREE.PlaneGeometry(2.7, 3.9), mGold, 0, HH/2+0.3, HL-5.05, 0, Math.PI)
         mesh(new THREE.PlaneGeometry(2.4, 3.6), kMat, 0, HH/2+0.3, HL-5.03, 0, Math.PI)
-        const pl2 = new THREE.PointLight(0xFFEED0, 3.0, 8, 1.6)
-        pl2.position.set(0, HH-0.6, HL-8)
+        const pl2 = new THREE.PointLight(0xFFEED0, 6.0, 14, 1.2)
+        pl2.position.set(0, HH-0.5, HL-10)
         scene.add(pl2)
         const fc2 = document.createElement('canvas'); fc2.width=400; fc2.height=600
         const fctx = fc2.getContext('2d')
