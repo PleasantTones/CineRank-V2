@@ -83,6 +83,16 @@ export default function Fantasy() {
 
   useEffect(() => { loadSession() }, [loadSession])
 
+  // Always refresh dynamic movies from Supabase when Fantasy opens
+  // so movies loaded in admin mid-session appear immediately
+  useEffect(() => {
+    sbFetch('/rest/v1/season_movies?select=*&order=added_at.asc&limit=500')
+      .then(rows => {
+        if (rows?.length > 0) useStore.getState().loadDynamicMovies(rows)
+      })
+      .catch(() => {})
+  }, [])
+
   // Load TMDB financials for all picks in a draft
   const loadScoring = useCallback(async (draftPicks, movies) => {
     if (!getTMDBKey() || !draftPicks.length) return
@@ -240,10 +250,11 @@ export default function Fantasy() {
   ].filter(t => t.remaining > 0)
 
   const pickedMovieIds = new Set(picks.map(p => p.movie_id))
-  // Only show movies from the draft's specific season in the draft pool
+  // Draft pool = movies matching the draft's season
   const draftSeasonMovies = session
     ? allMovies.filter(m => m.dynamic && m.season === session.season)
-    : allMovies
+    : allMovies.filter(m => m.dynamic)
+  const noSeasonMovies = session && draftSeasonMovies.length === 0
   const availableMovies = draftSeasonMovies.filter(m => !pickedMovieIds.has(m.id))
   const myPicks = picks.filter(p => p.player === player)
 
@@ -570,6 +581,17 @@ export default function Fantasy() {
           </button>
 
           {error && <div className="bg-red-900/30 border border-red-500/40 rounded-xl p-2 text-xs text-red-300">{error}</div>}
+
+          {noSeasonMovies && allMovies.filter(m => m.dynamic).length > 0 && (
+            <div className="bg-gold/10 border border-gold/30 rounded-xl p-2 text-xs text-gold">
+              ⚠️ No movies loaded for {SEASON_LABELS[session?.season]}. Showing all available movies. Go to /admin to load the correct season, then start a new draft.
+            </div>
+          )}
+          {noSeasonMovies && allMovies.filter(m => m.dynamic).length === 0 && (
+            <div className="bg-red-900/20 border border-red-500/30 rounded-xl p-2 text-xs text-red-400">
+              ❌ No season movies loaded at all. Go to /admin → Auto-Load Season Movies first.
+            </div>
+          )}
 
           {/* Draft status bar */}
           <div className="bg-surface border border-border rounded-2xl p-3">

@@ -110,8 +110,8 @@ export default function RottenPinball({ onEnd }) {
         if (b.x > W - BALL_R - 8)      { b.x = W-BALL_R-8; b.vx = -Math.abs(b.vx)*0.78 }
         if (b.y < BALL_R + 8)          { b.y = BALL_R+8; b.vy = Math.abs(b.vy)*0.7 }
 
-        // Right lane wall (keep ball out of lane while in play)
-        if (b.x > W-40 && b.y > LANE_TOP) { b.x = W-40; b.vx = -Math.abs(b.vx)*0.8 }
+        // Right lane wall — only block when ball is moving INTO the lane (vx > 0)
+        if (b.x > W-46 && b.vx > 0 && b.y > LANE_TOP) { b.x = W-46; b.vx = -Math.abs(b.vx)*0.8 }
 
         // Bumpers
         BUMPERS.forEach((bum, i) => {
