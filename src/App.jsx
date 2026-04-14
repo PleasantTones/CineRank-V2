@@ -71,7 +71,7 @@ export default function App() {
         // Load ratings and matchup history in parallel
         const [ratings, matchups] = await Promise.all([
           sbFetch('/rest/v1/ratings?select=player,movie_id,elo,wins,losses,matches,unseen'),
-          sbFetch('/rest/v1/matchups?select=player,winner_id,loser_id&limit=10000'),
+          sbFetch('/rest/v1/matchups?select=player,movie_a,movie_b,winner_id,loser_id&limit=10000'),
         ])
 
         // Build per-player played pairs and h2h history from matchups
@@ -79,9 +79,14 @@ export default function App() {
         PLAYERS.forEach(p => { playerMatchups[p] = { playedPairs: [], h2hHistory: {} } })
         ;(matchups || []).forEach(m => {
           if (!playerMatchups[m.player]) return
-          const key = [m.winner_id, m.loser_id].sort().join('__')
+          // Handle v1 format (movie_a/movie_b) and v2 format (winner_id/loser_id)
+          const a = m.movie_a || m.winner_id
+          const b = m.movie_b || m.loser_id
+          if (!a || !b) return
+          const key = [a, b].sort().join('__')
           playerMatchups[m.player].playedPairs.push(key)
-          playerMatchups[m.player].h2hHistory[key] = m.winner_id
+          // h2h winner: v2 has winner_id, v1 didn't track winner
+          if (m.winner_id) playerMatchups[m.player].h2hHistory[key] = m.winner_id
         })
 
         // Load each player's ratings + matchup history

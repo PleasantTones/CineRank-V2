@@ -11,8 +11,8 @@ const HW   = 3.5   // half corridor width
 const HH   = 4.0   // corridor height
 const HL   = 80    // corridor length
 const CAM_Y = 1.7
-const MOVE  = 0.07
-const TURN  = 0.028
+const MOVE  = 0.15
+const TURN  = 0.036
 
 const ROOM_LABELS = [
   { name: 'GODS OF OLYMPUS',      z0: -5,  z1: 8   },
@@ -73,7 +73,7 @@ export default function Hall() {
     // ── Scene ─────────────────────────────────────────────────────────────────
     const scene = new THREE.Scene()
     scene.background = new THREE.Color(0x0d0b08)
-    scene.fog = new THREE.FogExp2(0x0d0b08, isMobile ? 0.045 : 0.028)  // denser fog on mobile = less visible geometry
+    scene.fog = new THREE.FogExp2(0x0d0b08, isMobile ? 0.05 : 0.032)
 
     // ── Camera ────────────────────────────────────────────────────────────────
     camera = new THREE.PerspectiveCamera(68, 1, 0.1, 55)  // assign to forward-declared var
@@ -89,19 +89,19 @@ export default function Hall() {
       return t
     }
     const texSize = isMobile ? 256 : 512
-    const tFloor   = canvasTex(makeMarbleTexture(texSize,texSize,{baseColor:[200,188,165],veinColor:[160,125,65],veinCount:isMobile?4:8}), 6, 30)
-    const tWall    = canvasTex(makeMarbleTexture(texSize,texSize,{baseColor:[228,216,192],veinColor:[185,148,80],veinCount:isMobile?3:5}), 1, 1)
-    const tCeiling = canvasTex(makeMarbleTexture(texSize,texSize,{baseColor:[218,208,185],veinCount:isMobile?2:3}), 3, 12)
+    const tFloor   = canvasTex(makeMarbleTexture(texSize,texSize,{baseColor:[175,162,138],veinColor:[135,100,48],veinCount:isMobile?4:8}), 6, 30)
+    const tWall    = canvasTex(makeMarbleTexture(texSize,texSize,{baseColor:[198,186,162],veinColor:[155,118,50],veinCount:isMobile?3:5}), 1, 1)
+    const tCeiling = canvasTex(makeMarbleTexture(texSize,texSize,{baseColor:[188,175,152],veinCount:isMobile?2:3}), 3, 12)
     const tGold    = canvasTex(makeGoldTexture(128,128), 1, 1)
     const tFresco  = new THREE.CanvasTexture(makeFrescoTexture(isMobile?512:1024,isMobile?256:512))
 
     // ── Materials ─────────────────────────────────────────────────────────────
-    const mWall    = new THREE.MeshBasicMaterial({ map: tWall })
-    const mFloor   = new THREE.MeshBasicMaterial({ map: tFloor })
-    const mCeiling = new THREE.MeshBasicMaterial({ map: tCeiling })
+    const mWall    = new THREE.MeshLambertMaterial({ map: tWall })
+    const mFloor   = new THREE.MeshLambertMaterial({ map: tFloor })
+    const mCeiling = new THREE.MeshLambertMaterial({ map: tCeiling })
     const mGold    = new THREE.MeshBasicMaterial({ map: tGold, color: 0xD4A840 })
     const mDark    = new THREE.MeshBasicMaterial({ color: 0x0a0804 })
-    const mFresco  = new THREE.MeshBasicMaterial({ map: tFresco })
+    const mFresco  = new THREE.MeshLambertMaterial({ map: tFresco })
 
     function add(geo, mat, x, y, z, rx=0, ry=0, rz=0) {
       const m = new THREE.Mesh(geo, mat)
@@ -170,11 +170,11 @@ export default function Hall() {
     const colGeo = new THREE.CylinderGeometry(0.16, 0.2, HH - 0.4, 10)
     const capGeo = new THREE.CylinderGeometry(0.25, 0.16, 0.18, 10)
     const baseGeo= new THREE.CylinderGeometry(0.22, 0.25, 0.12, 10)
-    const mCol   = new THREE.MeshBasicMaterial({ map: tWall })
+    const mCol   = new THREE.MeshLambertMaterial({ map: tWall })
 
     // Columns: skip on mobile, every 18 units on desktop
     if (!isMobile) {
-      for (let z = 4; z < HL - 6; z += 18) {
+      for (let z = 4; z < HL - 6; z += 24) {  // fewer columns = fewer draw calls
         for (const x of [-HW + 0.2, HW - 0.2]) {
           add(colGeo, mCol, x, HH/2 - 0.2, z)
           add(capGeo, mGold, x, HH - 0.28, z)
@@ -189,24 +189,25 @@ export default function Hall() {
     const chandMat  = new THREE.MeshBasicMaterial({ color: 0xDDEEFF })
 
     const lights = []
-    for (let z = 2; z < HL - 6; z += 18) {  // every 18 units = half as many lights
+    for (let z = 2; z < HL - 6; z += 26) {  // every 26 units = 3 lights total
       const cy = HH - 0.35
       add(chandGeo, chandMat, 0, cy, z)
       add(ringGeo, mGold, 0, cy - 0.15, z, Math.PI/2)
       // Chain (desktop only)
       if (!isMobile) add(new THREE.CylinderGeometry(0.015, 0.015, 0.55, 4), mGold, 0, HH - 0.06, z)
 
-      const pl = new THREE.PointLight(0xFFEDD0, 1.6, 13, 1.8)
+      const pl = new THREE.PointLight(0xFFDD90, 3.2, 22, 1.4)  // brighter + wider range = fewer needed
       pl.position.set(0, cy - 0.2, z)
       scene.add(pl)
       lights.push(pl)
     }
 
     // ── Lighting ──────────────────────────────────────────────────────────────
-    scene.add(new THREE.AmbientLight(0xFFF8E8, 0.7))
-    const dir = new THREE.DirectionalLight(0xFFEED8, 0.45)
-    dir.position.set(0, 10, 20)
+    scene.add(new THREE.AmbientLight(0xFFF0D8, 0.38))  // dimmer = more dramatic contrast
+    const dir = new THREE.DirectionalLight(0xFFEED0, 0.6)
+    dir.position.set(2, 8, 15)
     scene.add(dir)
+    // fill light removed for performance
 
     // ── Paintings ─────────────────────────────────────────────────────────────
     const paintings = []
@@ -318,33 +319,46 @@ export default function Hall() {
       add(new THREE.PlaneGeometry(2.4+0.3, 3.6+0.3), mGold, 0, HH/2+0.3, HL-5.05, 0, Math.PI)
       const kp = add(new THREE.PlaneGeometry(2.4, 3.6), kingMat, 0, HH/2+0.3, HL-5.03, 0, Math.PI)
 
-      const pl2 = new THREE.SpotLight(0xFFEED0, 2.5, 12, 0.45, 0.5)
-      pl2.position.set(0, HH-0.4, HL-9)
-      pl2.target = kp
-      scene.add(pl2, pl2.target)
+      const pl2 = new THREE.PointLight(0xFFEED0, 3.0, 8, 1.6)
+      pl2.position.set(0, HH-0.6, HL-8)
+      scene.add(pl2)  // PointLight cheaper than SpotLight
 
       const cached = getCachedPoster(king.id)
       function applyKing(url) {
-        if (!url) return
+        const src = url || king.img  // always fallback to base64
         const img = new Image(); img.crossOrigin = 'anonymous'
         img.onload = () => {
           const t = new THREE.Texture(img); t.colorSpace = THREE.SRGBColorSpace; t.needsUpdate = true
           kingMat.map = t; kingMat.color.set(0xffffff); kingMat.needsUpdate = true
         }
-        img.src = url
+        img.onerror = () => {
+          // Fallback to base64 if OMDB URL fails
+          if (src !== king.img) { img.src = king.img; return }
+          // If base64 also fails, show fallback canvas
+          kingMat.map = new THREE.CanvasTexture(makeFallback(king.title, null))
+          kingMat.color.set(0xffffff); kingMat.needsUpdate = true
+        }
+        img.src = src
       }
+      // Try OMDB first, fallback to base64 if not cached
       if (cached) applyKing(cached)
-      else fetchPoster(king.id).then(applyKing)
+      else { applyKing(king.img); fetchPoster(king.id).then(url => { if(url) applyKing(url) }) }
 
       // Crown label
-      const lc = document.createElement('canvas'); lc.width=512; lc.height=96
+      const lc = document.createElement('canvas'); lc.width=512; lc.height=128
       const lt = lc.getContext('2d')
-      lt.fillStyle='#08060a'; lt.fillRect(0,0,512,96)
-      lt.strokeStyle='#C8A040'; lt.lineWidth=2; lt.strokeRect(3,3,506,90)
-      lt.fillStyle='#F0C048'; lt.font='bold 22px Inter,sans-serif'; lt.textAlign='center'
-      lt.fillText('👑 #1 ALL-TIME · ' + (king.title.length>28 ? king.title.slice(0,27)+'…' : king.title), 256, 56)
+      lt.fillStyle='#09070c'; lt.fillRect(0,0,512,128)
+      lt.strokeStyle='#C8A040'; lt.lineWidth=2; lt.strokeRect(3,3,506,122)
+      lt.fillStyle='rgba(200,168,64,0.15)'; lt.fillRect(4,4,504,120)
+      lt.fillStyle='#F0C048'; lt.font='bold 20px Inter,sans-serif'; lt.textAlign='center'
+      lt.fillText('👑  #1 ALL-TIME CHAMPION', 256, 42)
+      lt.fillStyle='rgba(255,255,255,0.85)'; lt.font='bold 18px Inter,sans-serif'
+      const kTitle = king.title.length>32 ? king.title.slice(0,31)+'…' : king.title
+      lt.fillText(kTitle, 256, 78)
+      const gr = globalRatings[king.id]
+      if (gr?.elo) { lt.fillStyle='rgba(200,168,64,0.7)'; lt.font='13px Inter,sans-serif'; lt.fillText(`ELO ${gr.elo}  ·  ${gr.wins} wins`, 256, 108) }
       const lMat = new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(lc), transparent: true })
-      add(new THREE.PlaneGeometry(2.4, 0.42), lMat, 0, 0.8, HL-5.02, 0, Math.PI)
+      add(new THREE.PlaneGeometry(2.5, 0.52), lMat, 0, 0.72, HL-5.02, 0, Math.PI)
     }
 
     // Section plaques

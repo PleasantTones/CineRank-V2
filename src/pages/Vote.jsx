@@ -188,7 +188,7 @@ export default function Vote() {
       Promise.all([
         sbFetch('/rest/v1/matchups', {
           method: 'POST', prefer: 'resolution=merge-duplicates',
-          body: JSON.stringify({ id: `${player}_${pairKey(winnerId, loserId)}`, player, winner_id: winnerId, loser_id: loserId })
+          body: JSON.stringify({ id: `${player}_${pairKey(winnerId, loserId)}`, player, movie_a: winnerId, movie_b: loserId, winner_id: winnerId, loser_id: loserId })
         }),
         sbFetch('/rest/v1/ratings', {
           method: 'POST', prefer: 'resolution=merge-duplicates',
