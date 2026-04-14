@@ -33,20 +33,25 @@ function pickPair(ratings, playedPairs) {
   return unplayed[0]
 }
 
-function MovieCard({ movie, rating, onPick, flash, h2h }) {
+function MovieCard({ movie, rating, onPick, onUnseen, flash }) {
   return (
-    <motion.div layout className="relative flex-1 rounded-2xl overflow-hidden" style={{ minWidth: 0, minHeight: 0, alignSelf: "stretch" }}>
-      {/* Poster — long press opens modal */}
+    <motion.div
+      layout
+      className="relative flex-1 rounded-2xl overflow-hidden"
+      style={{ minWidth: 0, minHeight: 0, alignSelf: 'stretch' }}
+    >
+      {/* Poster — tappable for movie details */}
       <img
         src={movie.img}
         alt={movie.title}
         className="absolute inset-0 w-full h-full object-cover"
         draggable={false}
         onClick={() => openMovieModal(movie.id)}
+        style={{ imageRendering: 'auto' }}
       />
 
-      {/* Gradient */}
-      <div className="absolute inset-x-0 bottom-0 h-3/5 bg-gradient-to-t from-black/95 via-black/50 to-transparent pointer-events-none" />
+      {/* Deep gradient — gives buttons clear background */}
+      <div className="absolute inset-x-0 bottom-0 h-2/3 bg-gradient-to-t from-black via-black/80 to-transparent pointer-events-none" />
 
       {/* Win flash */}
       <AnimatePresence>
@@ -54,41 +59,64 @@ function MovieCard({ movie, rating, onPick, flash, h2h }) {
           <motion.div
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
             transition={{ duration: 0.15 }}
-            className="absolute inset-0 bg-win/12 border-2 border-win rounded-2xl pointer-events-none"
+            className="absolute inset-0 bg-win/10 border-2 border-win rounded-2xl pointer-events-none"
           />
         )}
       </AnimatePresence>
 
-      {/* Info overlay */}
-      <div className="absolute inset-x-0 bottom-0 p-3 pointer-events-none">
-        {h2h && (
-          <div className="mb-1.5 inline-flex items-center gap-1 bg-black/60 rounded-lg px-2 py-1">
-            <span className="text-[9px] text-gold/70">Last time:</span>
-            <span className="text-[9px] font-semibold text-gold/90 truncate max-w-[80px]">{h2h} won</span>
-          </div>
-        )}
-        <p className="text-white font-bold text-sm leading-snug line-clamp-2 drop-shadow-lg">{movie.title}</p>
-        <p className="text-gold/80 text-[10px] font-semibold font-mono mt-0.5">{rating?.elo ?? 1000} ELO</p>
-      </div>
+      {/* Bottom content — title + buttons, no overlap */}
+      <div className="absolute inset-x-0 bottom-0 p-3 flex flex-col gap-2">
+        {/* Title + ELO */}
+        <div className="pointer-events-none">
+          <p className="text-white font-bold text-sm leading-snug line-clamp-2 drop-shadow-lg">
+            {movie.title}
+          </p>
+          <p className="text-gold/70 text-[10px] font-semibold font-mono mt-0.5">
+            {rating?.elo ?? 1000} ELO
+          </p>
+        </div>
 
-      {/* Pick button — separate from poster tap */}
-      <button
-        onClick={onPick}
-        className="absolute inset-x-3 bottom-3 py-3 bg-gold/15 hover:bg-gold/30 active:scale-95 border border-gold/35 rounded-xl text-gold text-xs font-bold tracking-wide transition-all"
-        style={{ marginTop: 'auto' }}
-      >
-        Pick ✓
-      </button>
+        {/* Pick button */}
+        <button
+          onClick={onPick}
+          className="w-full py-2.5 rounded-xl font-bold text-xs tracking-wide transition-all active:scale-95"
+          style={{
+            background: 'linear-gradient(135deg, rgba(200,160,64,0.25), rgba(200,160,64,0.12))',
+            border: '1px solid rgba(200,160,64,0.5)',
+            color: '#F0C048',
+            backdropFilter: 'blur(8px)',
+            WebkitBackdropFilter: 'blur(8px)',
+            boxShadow: '0 2px 12px rgba(0,0,0,0.4)',
+          }}
+        >
+          ✓ Pick this movie
+        </button>
+
+        {/* Haven't seen button */}
+        <button
+          onClick={onUnseen}
+          className="w-full py-2 rounded-xl text-[10px] font-semibold tracking-wide transition-all active:scale-95"
+          style={{
+            background: 'rgba(0,0,0,0.45)',
+            border: '1px solid rgba(255,255,255,0.12)',
+            color: 'rgba(255,255,255,0.5)',
+            backdropFilter: 'blur(8px)',
+            WebkitBackdropFilter: 'blur(8px)',
+          }}
+        >
+          Haven't seen this
+        </button>
+      </div>
     </motion.div>
   )
 }
 
 export default function Vote() {
-  const { player, players, vote, muted } = useStore()
+  const { player, players, vote, undoVote, markUnseen, muted } = useStore()
   const [streak, setStreak] = useState(0)
   const [flash, setFlash] = useState(null)
   const [voteCount, setVoteCount] = useState(0)
-  const lastVoteRef = useRef(null)
+  const lastVoteRef = useRef(null) // stores snapshot for undo
   const prevPctRef = useRef(0)
 
   const pd = player ? players[player] : null
@@ -108,13 +136,22 @@ export default function Vote() {
     const loserId = pair.find(m => m.id !== winnerId).id
     const side = pair[0].id === winnerId ? 'a' : 'b'
     setFlash(side)
-    lastVoteRef.current = { winnerId, loserId, pair: [...pair] }
+
+    // Snapshot state BEFORE vote for undo
+    const snapshot = {
+      ratings: JSON.parse(JSON.stringify(pd.ratings)),
+      playedPairs: [...(pd.playedPairs || [])],
+      matchCount: pd.matchCount,
+      pair: [...pair],
+    }
+
     playPop(muted)
     if (navigator.vibrate) navigator.vibrate(25)
 
     setTimeout(() => {
       setFlash(null)
       vote(winnerId, loserId)
+      lastVoteRef.current = snapshot
       const newStreak = streak + 1
       setStreak(newStreak)
       setVoteCount(c => c + 1)
@@ -128,12 +165,11 @@ export default function Vote() {
       }
       prevPctRef.current = newPct
 
-      // Streak toast
       if (newStreak === 5)  showToast('🔥 5 vote streak!', 'gold')
       if (newStreak === 10) showToast('⚡ 10 in a row!', 'gold')
 
-      // Save matchup + updated ratings to DB
-      const updatedRatings = players[player]?.ratings ?? {}
+      // Save to DB
+      const updated = players[player]?.ratings ?? {}
       Promise.all([
         sbFetch('/rest/v1/matchups', {
           method: 'POST', prefer: 'resolution=merge-duplicates',
@@ -142,19 +178,20 @@ export default function Vote() {
         sbFetch('/rest/v1/ratings', {
           method: 'POST', prefer: 'resolution=merge-duplicates',
           body: JSON.stringify([winnerId, loserId].map(id => ({
-            id: `${player}_${id}`,
-            player,
-            movie_id: id,
-            elo: updatedRatings[id]?.elo ?? 1000,
-            wins: updatedRatings[id]?.wins ?? 0,
-            losses: updatedRatings[id]?.losses ?? 0,
-            matches: updatedRatings[id]?.matches ?? 0,
-            unseen: false,
+            id: `${player}_${id}`, player, movie_id: id,
+            elo: updated[id]?.elo ?? 1000, wins: updated[id]?.wins ?? 0,
+            losses: updated[id]?.losses ?? 0, matches: updated[id]?.matches ?? 0, unseen: false,
           })))
         }),
       ]).catch(() => {})
     }, 220)
-  }, [pair, player, vote, streak, muted, playedCount, totalPairs])
+  }, [pair, player, vote, streak, muted, playedCount, totalPairs, pd])
+
+  const handleUnseen = useCallback((movieId) => {
+    markUnseen(movieId)
+    setVoteCount(c => c + 1)
+    showToast('Marked as unseen — skipping this matchup')
+  }, [markUnseen])
 
   const handleSkip = useCallback(() => {
     setStreak(0)
@@ -163,15 +200,18 @@ export default function Vote() {
   }, [])
 
   const handleUndo = useCallback(() => {
-    if (!lastVoteRef.current) return
+    const snap = lastVoteRef.current
+    if (!snap || !player) return
+    // Restore full ELO state from snapshot
+    undoVote(player, snap.ratings, snap.playedPairs, snap.matchCount)
     lastVoteRef.current = null
     setStreak(s => Math.max(0, s - 1))
     setVoteCount(c => Math.max(0, c - 1))
-    showToast('↩ Vote undone')
-  }, [])
+    showToast('↩ Vote undone — ELO restored')
+  }, [player, undoVote])
 
   if (!player) return (
-    <PageWrapper scroll={true} className="flex items-center justify-center p-8">
+    <PageWrapper scroll className="flex items-center justify-center p-8">
       <div className="text-center space-y-3 animate-fade-up">
         <div className="text-5xl">⚔️</div>
         <p className="text-ink-secondary text-sm">Select your profile above to start voting</p>
@@ -180,11 +220,13 @@ export default function Vote() {
   )
 
   if (!pair) return (
-    <PageWrapper scroll={true} className="flex items-center justify-center p-8">
+    <PageWrapper scroll className="flex items-center justify-center p-8">
       <div className="text-center space-y-4 animate-fade-up">
         <div className="text-5xl">🎉</div>
         <h2 className="text-lg font-bold text-ink-primary">All caught up!</h2>
-        <p className="text-sm text-ink-secondary max-w-xs">Voted on all {totalPairs} pairs. Mark more films as seen in My Movies to unlock new matchups.</p>
+        <p className="text-sm text-ink-secondary max-w-xs">
+          Voted on all {totalPairs} pairs. Mark more films as seen in My Movies to unlock new matchups.
+        </p>
       </div>
     </PageWrapper>
   )
@@ -216,36 +258,49 @@ export default function Vote() {
       {h2hWinner && (
         <div className="mx-4 mb-2 py-1.5 px-3 bg-raised border border-border/50 rounded-xl">
           <p className="text-[10px] text-ink-muted text-center">
-            Last matchup: <span className="text-ink-secondary font-semibold">{h2hWinner}</span> won
+            Last time: <span className="text-ink-secondary font-semibold">{h2hWinner}</span> won
           </p>
         </div>
       )}
 
-      {/* Cards */}
+      {/* H2H Cards */}
       <AnimatePresence mode="wait">
-        <motion.div key={`${movieA.id}-${movieB.id}`}
+        <motion.div
+          key={`${movieA.id}-${movieB.id}`}
           initial={{ opacity: 0, scale: 0.97 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.97 }}
           transition={{ duration: 0.16 }}
-          className="flex-1 flex gap-2 px-3 pb-2 min-h-0 overflow-hidden" style={{ minHeight: 0 }}>
-          <MovieCard movie={movieA} rating={pd.ratings[movieA.id]} onPick={() => handlePick(movieA.id)}
-            flash={flash === 'a'} h2h={h2hWinnerId === movieA.id ? null : null} />
-          <div className="flex-shrink-0 self-center flex items-center justify-center w-7 h-7 rounded-full bg-base border border-border">
+          className="flex-1 flex gap-2 px-3 pb-2 overflow-hidden"
+          style={{ minHeight: 0 }}
+        >
+          <MovieCard
+            movie={movieA} rating={pd.ratings[movieA.id]}
+            onPick={() => handlePick(movieA.id)}
+            onUnseen={() => handleUnseen(movieA.id)}
+            flash={flash === 'a'}
+          />
+          <div className="flex-shrink-0 self-center flex items-center justify-center w-7 h-7 rounded-full bg-base border border-border z-10">
             <span className="text-[9px] font-black text-gold tracking-widest">VS</span>
           </div>
-          <MovieCard movie={movieB} rating={pd.ratings[movieB.id]} onPick={() => handlePick(movieB.id)}
-            flash={flash === 'b'} h2h={null} />
+          <MovieCard
+            movie={movieB} rating={pd.ratings[movieB.id]}
+            onPick={() => handlePick(movieB.id)}
+            onUnseen={() => handleUnseen(movieB.id)}
+            flash={flash === 'b'}
+          />
         </motion.div>
       </AnimatePresence>
 
-      {/* Controls */}
-      <div className="flex items-center justify-between px-4 pb-4 pt-1">
-        <button onClick={handleUndo} disabled={!lastVoteRef.current}
-          className="text-[11px] text-ink-muted border border-border rounded-lg px-3 py-2 hover:border-gold/30 hover:text-gold transition-all disabled:opacity-30">
+      {/* Controls row */}
+      <div className="flex items-center justify-between px-4 pb-3 pt-1">
+        <button
+          onClick={handleUndo}
+          disabled={!lastVoteRef.current}
+          className="text-[11px] text-ink-muted border border-border rounded-lg px-3 py-2 hover:border-gold/30 hover:text-gold transition-all disabled:opacity-25"
+        >
           ↩ Undo
         </button>
         <p className="text-[9px] text-ink-muted">Tap poster for details</p>
-        <button onClick={handleSkip}
-          className="text-[11px] text-ink-muted hover:text-ink-secondary transition-colors px-3 py-2">
+        <button onClick={handleSkip} className="text-[11px] text-ink-muted hover:text-ink-secondary transition-colors px-3 py-2">
           Skip →
         </button>
       </div>

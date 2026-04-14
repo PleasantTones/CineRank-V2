@@ -46,7 +46,7 @@ export default function App() {
 
   return (
     <div className="flex justify-center bg-black" style={{ height: "100dvh", overflow: "hidden" }}>
-    <div className="flex flex-col bg-base w-full" style={{ maxWidth: 480, height: "100dvh", overflow: "hidden", position: "relative" }}>
+    <div className="flex flex-col bg-base w-full" style={{ maxWidth: 520, height: "100dvh", overflow: "hidden", position: "relative" }}>
       {/* Global overlays — always mounted */}
       <ToastContainer />
       <Confetti />

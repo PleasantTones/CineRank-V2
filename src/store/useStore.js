@@ -53,6 +53,24 @@ export const useStore = create(
         return { players: { ...s.players, [p]: newPd }, globalRatings: global }
       }),
 
+      // Undo last vote — restores previous ratings snapshot
+      undoVote: (playerName, prevRatings, prevPlayedPairs, prevMatchCount) => set(s => {
+        if (!playerName) return {}
+        const pd = s.players[playerName]
+        const newPd = { ...pd, ratings: prevRatings, playedPairs: prevPlayedPairs, matchCount: prevMatchCount }
+        // Rebuild global ratings
+        const global = { ...s.globalRatings }
+        MOVIES.forEach(m => {
+          let eloSum = 0, eloCount = 0, wins = 0, losses = 0, matches = 0
+          PLAYERS.forEach(pl => {
+            const r = pl === playerName ? prevRatings[m.id] : s.players[pl].ratings[m.id]
+            if (r && r.matches > 0) { eloSum += r.elo; eloCount++; wins += r.wins; losses += r.losses; matches += r.matches }
+          })
+          global[m.id] = { elo: eloCount > 0 ? Math.round(eloSum / eloCount) : 1000, wins, losses, matches }
+        })
+        return { players: { ...s.players, [playerName]: newPd }, globalRatings: global }
+      }),
+
       // Mark unseen
       markUnseen: (movieId) => set(s => {
         const p = s.player; if (!p) return {}
