@@ -68,7 +68,7 @@ export const useStore = create((set, get) => ({
   }),
 
   // Merge Supabase season movies into the store
-  loadDynamicMovies: (rows) => set(() => {
+  loadDynamicMovies: (rows) => set((state) => {
     const dynamic = (rows || []).map(r => ({
       id: r.id,
       title: r.title,
@@ -79,7 +79,21 @@ export const useStore = create((set, get) => ({
       season: r.season,
       dynamic: true,
     }))
-    return { dynamicMovies: dynamic }
+
+    // For each player, add any new dynamic movies as unseen:true
+    // (preserves existing ratings if player already voted on this movie)
+    const updatedPlayers = {}
+    Object.entries(state.players).forEach(([playerName, pd]) => {
+      const ratings = { ...pd.ratings }
+      dynamic.forEach(m => {
+        if (!ratings[m.id]) {
+          ratings[m.id] = { elo: 1000, wins: 0, losses: 0, matches: 0, unseen: true }
+        }
+      })
+      updatedPlayers[playerName] = { ...pd, ratings }
+    })
+
+    return { dynamicMovies: dynamic, players: updatedPlayers }
   }),
 
   collectPoster: (id) => set(s => ({
@@ -92,7 +106,7 @@ export const useStore = create((set, get) => ({
       const ratings = {}
       MOVIES.forEach(m => { ratings[m.id] = { elo: 1000, wins: 0, losses: 0, matches: 0, unseen: false } })
       ;(rows || []).forEach(r => {
-        if (r.movie_id && ratings[r.movie_id] !== undefined) {
+        if (r.movie_id) {  // include dynamic movies even if not pre-initialized
           ratings[r.movie_id] = {
             elo: r.elo || 1000,
             wins: r.wins || 0,

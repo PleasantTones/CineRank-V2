@@ -125,8 +125,8 @@ export default function Admin() {
         setBulkProgress(`Fetching page ${page}${totalPages > 1 ? ` of ${totalPages}` : ''}…`)
         const res = await fetch(
           `${TMDB_BASE}/discover/movie?api_key=${apiKey}&language=en-US&region=US` +
-          `&release_date.gte=${dates.start}&release_date.lte=${dates.end}` +
-          `&with_release_type=3&sort_by=release_date.asc&page=${page}`
+          `&primary_release_date.gte=${dates.start}&primary_release_date.lte=${dates.end}` +
+          `&with_release_type=3&sort_by=primary_release_date.asc&page=${page}`
         )
         const data = await res.json()
         if (data.status_message) throw new Error(data.status_message)
@@ -135,9 +135,15 @@ export default function Admin() {
         page++
       }
 
+      // Strict client-side date filter — TMDB's API can sometimes return out-of-range results
+      const inRange = allMovies.filter(m => {
+        if (!m.release_date) return false
+        return m.release_date >= dates.start && m.release_date <= dates.end
+      })
+
       // Filter out movies already added
       const alreadyAdded = new Set(seasonMovies.map(m => m.tmdb_id))
-      const toAdd = allMovies.filter(m => !alreadyAdded.has(String(m.id)))
+      const toAdd = inRange.filter(m => !alreadyAdded.has(String(m.id)))
 
       if (toAdd.length === 0) {
         setBulkProgress('All movies already added!')
@@ -384,7 +390,21 @@ CREATE POLICY "d" ON season_movies FOR DELETE USING (true);`}</pre>
             <p className="text-xs font-bold text-ink-muted uppercase tracking-widest">
               Season Movies ({seasonMovies.length})
             </p>
-            <button onClick={loadSeasonMovies} className="text-[11px] text-ink-muted hover:text-ink-primary">Refresh</button>
+            <div className="flex gap-2">
+              <button onClick={loadSeasonMovies} className="text-[11px] text-ink-muted hover:text-ink-primary">Refresh</button>
+              {seasonMovies.filter(m => m.season === season).length > 0 && (
+                <button onClick={async () => {
+                  if (!window.confirm(`Remove all ${season} movies from the database?`)) return
+                  const toRemove = seasonMovies.filter(m => m.season === season)
+                  for (const m of toRemove) {
+                    await sbFetch(`/rest/v1/season_movies?id=eq.${m.id}`, { method: 'DELETE' }).catch(() => {})
+                  }
+                  await loadSeasonMovies()
+                }} className="text-[11px] text-red-400 hover:text-red-300">
+                  Clear {season} ✕
+                </button>
+              )}
+            </div>
           </div>
           {seasonMovies.length === 0 ? (
             <p className="text-xs text-ink-muted text-center py-4">No movies added yet. Browse upcoming releases above.</p>

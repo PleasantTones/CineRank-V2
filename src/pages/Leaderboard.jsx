@@ -90,7 +90,7 @@ export default function Leaderboard() {
               style={{ background: 'rgba(200,160,64,0.06)' }}
             >
               <span className="text-base">📈</span>
-              <PosterImage movieId={mostImproved.movie.id} fallbackSrc={mostImproved.movie.img} className="w-7 h-10 object-cover rounded-md flex-shrink-0" />
+              <PosterImage movieId={mostImproved.movie.id} imdbId={mostImproved.movie?.imdbId} tmdbId={mostImproved.movie?.tmdbId} fallbackSrc={mostImproved.movie.img} className="w-7 h-10 object-cover rounded-md flex-shrink-0" />
               <div className="flex-1 min-w-0">
                 <p className="text-[10px] font-bold text-gold/60 uppercase tracking-widest">Most improved</p>
                 <p className="text-xs font-semibold text-ink-primary truncate">{mostImproved.movie.title}</p>
@@ -183,7 +183,7 @@ export default function Leaderboard() {
                 </span>
 
                 {/* Poster */}
-                <PosterImage movieId={movie.id} fallbackSrc={movie.img} alt={movie.title}
+                <PosterImage movieId={movie.id} imdbId={movie?.imdbId} tmdbId={movie?.tmdbId} fallbackSrc={movie.img} alt={movie.title}
                   className="w-7 h-10 object-cover rounded-md" />
 
                 {/* Title + trend */}

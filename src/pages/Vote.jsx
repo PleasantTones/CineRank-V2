@@ -81,6 +81,8 @@ function MovieCard({ movie, rating, onPick, onUnseen, flash }) {
         >
           <PosterImage
             movieId={movie.id}
+            imdbId={movie?.imdbId}
+            tmdbId={movie?.tmdbId}
             fallbackSrc={movie.img}
             alt={movie.title}
             style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}

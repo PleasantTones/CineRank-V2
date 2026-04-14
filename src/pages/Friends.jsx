@@ -104,7 +104,7 @@ export default function Friends() {
         {/* Most controversial */}
         {controversialMovie && (
           <div className="flex items-center gap-3 bg-surface border border-border rounded-2xl p-4 cursor-pointer hover:border-gold/30 transition-colors" onClick={() => openMovieModal(controversialMovie.movie.id)}>
-            <PosterImage movieId={controversialMovie.movie.id} fallbackSrc={controversialMovie.movie.img} className="w-9 h-14 object-cover rounded-lg flex-shrink-0" />
+            <PosterImage movieId={controversialMovie.movie.id} imdbId={controversialMovie.movie?.imdbId} tmdbId={controversialMovie.movie?.tmdbId} fallbackSrc={controversialMovie.movie.img} className="w-9 h-14 object-cover rounded-lg flex-shrink-0" />
             <div className="flex-1 min-w-0">
               <p className="text-[10px] font-bold text-ink-muted uppercase tracking-widest mb-0.5">Most divisive</p>
               <p className="text-sm font-bold text-ink-primary truncate">{controversialMovie.movie.title}</p>
@@ -134,7 +134,7 @@ export default function Friends() {
                       <p className="font-bold text-sm text-ink-primary">{p}</p>
                       <p className="text-[10px] text-ink-muted">{voted} movies rated</p>
                     </div>
-                    {top && <PosterImage movieId={top.id} fallbackSrc={top.img} className="w-8 h-12 object-cover rounded-lg flex-shrink-0 opacity-80" />}
+                    {top && <PosterImage movieId={top.id} imdbId={top?.imdbId} tmdbId={top?.tmdbId} fallbackSrc={top.img} className="w-8 h-12 object-cover rounded-lg flex-shrink-0 opacity-80" />}
                   </div>
                   <div className="grid grid-cols-3 gap-2">
                     {[

@@ -90,6 +90,8 @@ export default function MovieModal() {
             <div className="flex gap-4 p-5 pb-4 border-b border-border flex-shrink-0" style={{ background: '#0e0e10' }}>
               <PosterImage
                 movieId={movie.id}
+                imdbId={movie?.imdbId}
+                tmdbId={movie?.tmdbId}
                 fallbackSrc={poster || movie.img}
                 alt={movie.title}
                 className="rounded-xl flex-shrink-0 object-cover"

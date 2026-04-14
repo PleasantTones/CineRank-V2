@@ -13,12 +13,39 @@ export function getCachedPoster(movieId) {
   return cache[movieId] || null
 }
 
-export async function fetchPoster(movieId, imdbIdOverride) {
+export async function fetchPoster(movieId, imdbIdOverride, tmdbIdOverride) {
   if (cache[movieId]) return cache[movieId]
   if (pending[movieId]) return pending[movieId]
 
   const imdbUrl = IMDB_URLS[movieId]
   const imdbId = imdbIdOverride || imdbUrl?.match(/tt\d+/)?.[0]
+
+  // If we have a TMDB ID but no IMDB ID, fetch poster directly from TMDB
+  if (!imdbId && tmdbIdOverride) {
+    const tmdbKey = localStorage.getItem('tmdb_key')
+    if (tmdbKey) {
+      pending[movieId] = fetch(
+        `https://api.themoviedb.org/3/movie/${tmdbIdOverride}?api_key=${tmdbKey}`
+      )
+        .then(r => r.json())
+        .then(d => {
+          const url = d.poster_path ? `https://image.tmdb.org/t/p/w342${d.poster_path}` : null
+          if (url) {
+            cache[movieId] = url
+            clearTimeout(window._posterSaveTimer)
+            window._posterSaveTimer = setTimeout(() => {
+              try { localStorage.setItem(CACHE_KEY, JSON.stringify(cache)) } catch {}
+            }, 500)
+          }
+          delete pending[movieId]
+          return url
+        })
+        .catch(() => { delete pending[movieId]; return null })
+      return pending[movieId]
+    }
+    return null
+  }
+
   if (!imdbId) return null
 
   pending[movieId] = fetch(

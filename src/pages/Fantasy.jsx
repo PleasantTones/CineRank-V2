@@ -600,7 +600,7 @@ export default function Fantasy() {
                   return (
                     <div key={pick.id} className="flex flex-col items-center gap-1">
                       <div className="relative">
-                        <PosterImage movieId={pick.movie_id} fallbackSrc={movie?.img}
+                        <PosterImage movieId={pick.movie_id} imdbId={movie?.imdbId} tmdbId={movie?.tmdbId} fallbackSrc={movie?.img}
                           className="w-14 h-20 object-cover rounded-lg" />
                         <span className="absolute -top-1 -right-1 text-sm">{pt.icon}</span>
                       </div>
@@ -658,7 +658,7 @@ export default function Fantasy() {
                         onClick={() => setSelectedMovie(movie)}
                         style={{ cursor: 'pointer' }}
                       >
-                        <PosterImage movieId={movie.id} fallbackSrc={movie?.img} className="w-16 h-24 object-cover" />
+                        <PosterImage movieId={movie.id} imdbId={movie?.imdbId} tmdbId={movie?.tmdbId} fallbackSrc={movie?.img} className="w-16 h-24 object-cover" />
                         {/* Info button overlay */}
                         <button
                           onClick={e => { e.stopPropagation(); openMovieModal(movie.id) }}
@@ -695,7 +695,7 @@ export default function Fantasy() {
                 {availableMovies.slice(0, 25).map(movie => (
                   <div key={movie.id} className="flex flex-col items-center gap-0.5 opacity-60 cursor-pointer hover:opacity-90 transition-opacity"
                     onClick={() => openMovieModal(movie.id)}>
-                    <PosterImage movieId={movie.id} fallbackSrc={movie?.img} className="w-12 h-16 object-cover rounded-lg" />
+                    <PosterImage movieId={movie.id} imdbId={movie?.imdbId} tmdbId={movie?.tmdbId} fallbackSrc={movie?.img} className="w-12 h-16 object-cover rounded-lg" />
                     <p className="text-[8px] text-center text-ink-muted leading-tight line-clamp-1 w-12">{movie.title}</p>
                   </div>
                 ))}
@@ -788,7 +788,7 @@ export default function Fantasy() {
                           <div key={i} className="flex flex-col items-center gap-1 flex-1">
                             {movie ? (
                               <>
-                                <PosterImage movieId={pick.movie_id} fallbackSrc={movie?.img}
+                                <PosterImage movieId={pick.movie_id} imdbId={movie?.imdbId} tmdbId={movie?.tmdbId} fallbackSrc={movie?.img}
                                   className="w-full aspect-[2/3] object-cover rounded-lg" />
                                 <p className="text-[9px] text-center text-ink-muted leading-tight line-clamp-2">{movie.title}</p>
                               </>
@@ -813,7 +813,7 @@ export default function Fantasy() {
                           <p className="text-[10px] font-bold mb-1.5" style={{ color: pt.color }}>{pt.icon} {pt.label}</p>
                           {movie ? (
                             <div className="flex items-center gap-2">
-                              <PosterImage movieId={pick.movie_id} fallbackSrc={movie?.img}
+                              <PosterImage movieId={pick.movie_id} imdbId={movie?.imdbId} tmdbId={movie?.tmdbId} fallbackSrc={movie?.img}
                                 className="w-10 h-14 object-cover rounded-lg flex-shrink-0 cursor-pointer"
                                 onClick={() => openMovieModal(pick.movie_id)} />
                               <p className="text-xs text-ink-primary font-semibold leading-tight">{movie.title}</p>

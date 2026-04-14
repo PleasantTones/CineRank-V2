@@ -131,7 +131,7 @@ export default function MyMovies() {
                   className="flex-1 text-center"
                 >
                   <div className="relative mx-auto w-16 h-24 rounded-xl overflow-hidden mb-2 hover:scale-105 transition-transform duration-200 cursor-pointer" onClick={() => openMovieModal(m.id)}>
-                    <PosterImage movieId={m.id} fallbackSrc={m.img} alt={m.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    <PosterImage movieId={m.id} imdbId={m?.imdbId} tmdbId={m?.tmdbId} fallbackSrc={m.img} alt={m.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                     <div className="absolute top-1 left-1 text-sm">
                       {['🥇','🥈','🥉'][i]}
                     </div>
@@ -197,7 +197,7 @@ export default function MyMovies() {
                     {i < 3 ? ['🥇','🥈','🥉'][i] : `#${i+1}`}
                   </span>
                 )}
-                <PosterImage movieId={movie.id} fallbackSrc={movie.img} alt={movie.title} className="w-9 h-14 object-cover rounded-lg flex-shrink-0" />
+                <PosterImage movieId={movie.id} imdbId={movie?.imdbId} tmdbId={movie?.tmdbId} fallbackSrc={movie.img} alt={movie.title} className="w-9 h-14 object-cover rounded-lg flex-shrink-0" />
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-semibold text-ink-primary truncate">{movie.title}</p>
                   {tab === 'rankings' && r?.matches > 0 && (
