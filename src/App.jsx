@@ -45,6 +45,7 @@ export default function App() {
   const location = useLocation()
   const { player, players } = useStore()
   const isHall = location.pathname === '/hall'
+  const isAdmin = location.pathname === '/admin'
 
   const [dbLoaded, setDbLoaded] = useState(false)
 
@@ -117,12 +118,12 @@ export default function App() {
       <Confetti />
       <MovieModal />
       <Onboarding />
-      {!isHall && <FloatChat />}
+      {!isHall && !isAdmin && <FloatChat />}
 
-      {!isHall && <Header />}
-      {!isHall && !player && <PlayerSelect />}
+      {!isHall && !isAdmin && <Header />}
+      {!isHall && !isAdmin && !player && <PlayerSelect />}
 
-      <main className={`flex-1 min-h-0 overflow-hidden ${isHall ? '' : 'pb-24'}`}>
+      <main className={`flex-1 min-h-0 overflow-hidden ${isHall || isAdmin ? '' : 'pb-24'}`}>
         <AnimatePresence mode="wait">
           <React.Suspense fallback={<div className="flex-1 flex items-center justify-center"><span className="text-ink-muted text-sm">Loading Hall...</span></div>}>
           <Routes location={location} key={location.pathname}>
@@ -139,7 +140,7 @@ export default function App() {
         </AnimatePresence>
       </main>
 
-      {!isHall && <BottomNav />}
+      {!isHall && !isAdmin && <BottomNav />}
     </div>
     </div>
   )
