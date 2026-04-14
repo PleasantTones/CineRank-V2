@@ -62,13 +62,6 @@ export default function App() {
         ])
 
         console.log('[CineRank] Loaded ratings:', (ratings||[]).length, 'rows')
-        // Also load dynamic season movies
-        let seasonMovies = []
-        try { seasonMovies = await sbFetch('/rest/v1/season_movies?select=*&active=eq.true&order=added_at.asc') || [] } catch(e) { console.warn('[CineRank] No season_movies table yet') }
-        if (seasonMovies.length > 0) {
-          useStore.getState().loadDynamicMovies(seasonMovies)
-          console.log('[CineRank] Loaded', seasonMovies.length, 'season movies')
-        }
         console.log('[CineRank] Loaded matchups:', (matchups||[]).length, 'rows')
 
         // Build per-player played pairs from matchups
@@ -97,6 +90,15 @@ export default function App() {
           }
         })
         useStore.getState().loadAllFromDB(allData)
+
+        // Load dynamic season movies AFTER loadAllFromDB so unseen:true sticks
+        try {
+          const seasonMovies = await sbFetch('/rest/v1/season_movies?select=*&active=eq.true&order=added_at.asc') || []
+          if (seasonMovies.length > 0) {
+            useStore.getState().loadDynamicMovies(seasonMovies)
+            console.log('[CineRank] Loaded', seasonMovies.length, 'season movies (defaulting to unseen)')
+          }
+        } catch(e) { console.warn('[CineRank] No season_movies table yet') }
       } catch(e) {
         console.error('[CineRank] Load error:', e)
       } finally {

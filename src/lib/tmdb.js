@@ -65,8 +65,9 @@ export async function fetchTMDBFinancials(movie) {
     const d = await res.json()
     if (d.status_message) return null  // API error
 
-    const budget  = d.budget  || 0
-    const revenue = d.revenue || 0
+    // TMDB budget/revenue: 0 = unknown, values < $100k are community data errors
+    const budget  = (d.budget  && d.budget  >= 100_000) ? d.budget  : 0
+    const revenue = (d.revenue && d.revenue >= 100_000) ? d.revenue : 0
     const profit  = calcProfit(budget, revenue)
 
     const result = {

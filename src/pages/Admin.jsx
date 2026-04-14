@@ -68,7 +68,7 @@ export default function Admin() {
     try {
       const today = new Date().toISOString().split('T')[0]
       const res = await fetch(
-        `${TMDB_BASE}/discover/movie?api_key=${apiKey}&language=en-US&region=US&sort_by=release_date.asc&release_date.gte=${today}&with_release_type=3&vote_count.gte=0&page=${p}`
+        `${TMDB_BASE}/discover/movie?api_key=${apiKey}&language=en-US&region=US&with_release_type=3&release_date.gte=${today}&sort_by=release_date.asc&page=${p}`
       )
       const data = await res.json()
       if (data.status_message) { setError(`TMDB: ${data.status_message}`); setLoading(false); return }
@@ -116,17 +116,19 @@ export default function Admin() {
     setError('')
 
     try {
-      // Fetch all pages of wide US releases in the date range
+      // Fetch multiple pages from TMDB — wide US theatrical releases only
       let allMovies = []
       let page = 1
       let totalPages = 1
 
-      while (page <= totalPages && page <= 10) {  // cap at 10 pages (~200 movies)
+      while (page <= totalPages && page <= 10) {
         setBulkProgress(`Fetching page ${page}${totalPages > 1 ? ` of ${totalPages}` : ''}…`)
         const res = await fetch(
-          `${TMDB_BASE}/discover/movie?api_key=${apiKey}&language=en-US&region=US` +
-          `&primary_release_date.gte=${dates.start}&primary_release_date.lte=${dates.end}` +
-          `&with_release_type=3&sort_by=primary_release_date.asc&page=${page}`
+          `${TMDB_BASE}/discover/movie?api_key=${apiKey}&language=en-US` +
+          `&region=US` +                  // US release dates
+          `&with_release_type=3` +        // US theatrical only
+          `&release_date.gte=${dates.start}&release_date.lte=${dates.end}` +  // region-aware US dates
+          `&sort_by=release_date.asc&page=${page}`
         )
         const data = await res.json()
         if (data.status_message) throw new Error(data.status_message)
@@ -135,13 +137,19 @@ export default function Admin() {
         page++
       }
 
-      // Strict client-side date filter — TMDB's API can sometimes return out-of-range results
+      // Strict multi-layer client-side filter
       const inRange = allMovies.filter(m => {
         if (!m.release_date) return false
-        return m.release_date >= dates.start && m.release_date <= dates.end
+        // Must fall exactly within season window
+        if (m.release_date < dates.start || m.release_date > dates.end) return false
+        // Year must match season year (catches stale/re-release edge cases)
+        const releaseYear = m.release_date.slice(0, 4)
+        const seasonYear = dates.start.slice(0, 4)
+        if (releaseYear !== seasonYear) return false
+        return true
       })
 
-      // Filter out movies already added
+      // Skip movies already in the database
       const alreadyAdded = new Set(seasonMovies.map(m => m.tmdb_id))
       const toAdd = inRange.filter(m => !alreadyAdded.has(String(m.id)))
 
@@ -153,12 +161,17 @@ export default function Admin() {
 
       setBulkProgress(`Adding ${toAdd.length} movies…`)
 
-      // Fetch IMDB IDs and insert all — batched to avoid rate limiting
+      // Add each movie — fetch IMDB ID and insert
       let added = 0
+      const currentIds = [...seasonMovies.map(m => m.id)]
       for (const m of toAdd) {
-        setBulkProgress(`Adding ${++added}/${toAdd.length}: ${m.title}`)
+        added++
+        setBulkProgress(`Adding ${added}/${toAdd.length}: ${m.title}`)
         const imdbId = await getImdbId(m.id)
-        const newId = nextMovieId([...seasonMovies, ...toAdd.slice(0, added - 1).map((_, i) => ({ id: `M${9000 + i}` }))])
+        // Generate a stable ID that won't collide
+        const tempList = [...seasonMovies, ...Array.from({length: added - 1}, (_, i) => ({ id: `TEMP${i}` }))]
+        const newId = nextMovieId(tempList)
+        currentIds.push(newId)
         await sbFetch('/rest/v1/season_movies', {
           method: 'POST', prefer: 'resolution=merge-duplicates',
           body: JSON.stringify({
@@ -168,7 +181,6 @@ export default function Admin() {
             season, active: true,
           }),
         })
-        // Small delay to avoid hammering TMDB rate limits
         await new Promise(r => setTimeout(r, 120))
       }
 
@@ -381,6 +393,29 @@ CREATE POLICY "d" ON season_movies FOR DELETE USING (true);`}</pre>
                 })
               )}
             </div>
+          </div>
+        )}
+
+        {/* Clear season — prominent button */}
+        {seasonMovies.filter(m => m.season === season).length > 0 && (
+          <div className="bg-surface border border-red-900/40 rounded-2xl p-4">
+            <p className="text-xs font-bold text-red-400 uppercase tracking-widest mb-1">
+              Danger Zone — {SEASONS.find(s => s.id === season)?.label}
+            </p>
+            <p className="text-[11px] text-ink-muted mb-3">
+              Remove all {seasonMovies.filter(m => m.season === season).length} movies for this season. Use this to clear bad data before re-loading.
+            </p>
+            <button onClick={async () => {
+              if (!window.confirm(`Remove all ${seasonMovies.filter(m => m.season === season).length} movies for ${season}? This cannot be undone.`)) return
+              const toRemove = seasonMovies.filter(m => m.season === season)
+              for (const m of toRemove) {
+                await sbFetch(`/rest/v1/season_movies?id=eq.${m.id}`, { method: 'DELETE' }).catch(() => {})
+              }
+              await loadSeasonMovies()
+            }}
+              className="w-full py-3 bg-red-900/30 border border-red-500/40 text-red-400 font-black rounded-xl text-sm hover:bg-red-900/50 transition-colors">
+              🗑 Clear All {season} Movies
+            </button>
           </div>
         )}
 

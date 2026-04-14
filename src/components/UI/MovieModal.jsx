@@ -28,7 +28,9 @@ export default function MovieModal() {
   const movie = movieId ? allMovies.find(m => m.id === movieId) : null
   const pd = player ? players[player] : null
   const rating = movie && pd ? pd.ratings[movie.id] : null
-  const imdbUrl = movie ? (IMDB_URLS[movie.id] || (movie.imdbId ? 'https://www.imdb.com/title/' + movie.imdbId + '/' : null)) : null
+  const imdbDirectUrl = movie ? (IMDB_URLS[movie.id] || (movie.imdbId ? 'https://www.imdb.com/title/' + movie.imdbId + '/' : null)) : null
+  const imdbSearchUrl = movie ? 'https://www.imdb.com/find/?q=' + encodeURIComponent(movie.title) + '&s=tt&ttype=ft' : null
+  const imdbUrl = imdbDirectUrl || imdbSearchUrl
 
   useEffect(() => {
     if (!movie) return
@@ -172,13 +174,18 @@ export default function MovieModal() {
             </div>
 
             {/* Box Office / Financials */}
-            {(tmdb?.budget > 0 || tmdb?.revenue > 0 || tmdbLoading) && (
+            {(tmdb || tmdbLoading) && (
               <div className="rounded-xl overflow-hidden border border-border">
                 <div className="px-4 py-2.5 flex items-center justify-between" style={{ background: '#111113' }}>
                   <p className="text-[10px] font-bold text-ink-muted uppercase tracking-widest">Box Office</p>
                   {tmdbLoading && <span className="text-[10px] text-ink-muted animate-pulse">Loading…</span>}
                 </div>
-                {tmdb && (
+                {tmdb && tmdb.budget === 0 && tmdb.revenue === 0 && !tmdbLoading && (
+                  <div className="px-4 py-3 border-t border-border text-center">
+                    <p className="text-[11px] text-ink-muted">Budget data not yet available on TMDB</p>
+                  </div>
+                )}
+                {tmdb && (tmdb.budget > 0 || tmdb.revenue > 0) && (
                   <>
                     {[
                       { label: 'Production Budget', value: formatMoney(tmdb.budget), note: null },
@@ -229,7 +236,7 @@ export default function MovieModal() {
                   className="flex items-center justify-center gap-2 w-full py-3 rounded-xl font-bold text-sm transition-all hover:opacity-90 active:scale-98"
                   style={{ background: '#f5c518', color: '#000' }}
                 >
-                  View on IMDb ↗
+                  {imdbDirectUrl ? 'View on IMDb ↗' : 'Search on IMDb ↗'}
                 </a>
               </div>
             )}
