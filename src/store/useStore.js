@@ -102,6 +102,28 @@ export const useStore = create(
     }),
     {
       name: 'cinerank-store',
+      version: 3,  // bump this whenever store shape changes
+      migrate: (persisted, version) => {
+        // If version is old or data is corrupt, return clean state
+        try {
+          if (!persisted || typeof persisted !== 'object') return {}
+          if (!persisted.players || typeof persisted.players !== 'object') return {}
+          // Ensure all players have required fields
+          const players = {}
+          Object.entries(persisted.players || {}).forEach(([name, pd]) => {
+            players[name] = {
+              ratings: pd?.ratings || {},
+              matchCount: pd?.matchCount || 0,
+              playedPairs: Array.isArray(pd?.playedPairs) ? pd.playedPairs : [],
+              h2hHistory: pd?.h2hHistory || {},
+            }
+          })
+          return { ...persisted, players }
+        } catch(e) {
+          console.warn('Store migration failed, resetting:', e)
+          return {}
+        }
+      },
       partialize: (s) => ({ player: s.player, players: s.players, collected: s.collected, muted: s.muted }),
     }
   )

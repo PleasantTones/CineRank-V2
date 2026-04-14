@@ -43,6 +43,9 @@ export default function Hall() {
   useEffect(() => {
     const canvas = canvasRef.current
     if (!canvas) return
+    
+    // Catch Three.js errors gracefully
+    try {
 
     // ── Renderer ──────────────────────────────────────────────────────────────
     const renderer = new THREE.WebGLRenderer({ canvas, antialias: true })
@@ -434,7 +437,7 @@ export default function Hall() {
       frame++
 
       // Apply rotation
-      camera.rotation.y = yaw
+      camera.rotation.y = yaw + Math.PI  // +PI offset: yaw=0 faces into corridor
       camera.rotation.x = pitch
 
       // Compute movement vectors from yaw
@@ -496,6 +499,10 @@ export default function Hall() {
       renderer.render(scene, camera)
     }
     rafRef.current = requestAnimationFrame(loop)
+
+    } catch(err) {
+      console.error('Hall Three.js error:', err)
+    }
 
     return () => {
       cancelAnimationFrame(rafRef.current)

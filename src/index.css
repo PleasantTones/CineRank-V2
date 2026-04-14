@@ -80,19 +80,5 @@
 }
 
 
-/* GPU acceleration for animated elements */
-.will-change-transform {
-  will-change: transform;
-  transform: translateZ(0);
-}
 
-/* Smooth font rendering on all platforms */
-* {
-  text-rendering: optimizeLegibility;
-}
 
-/* Prevent layout thrashing on scroll containers */
-[class*="overflow-y-auto"],
-[class*="overflow-x-auto"] {
-  will-change: scroll-position;
-}

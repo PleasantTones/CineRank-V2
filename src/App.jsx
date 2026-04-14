@@ -21,12 +21,48 @@ import { sbFetch } from './lib/supabase'
 import { PLAYERS, MOVIES } from './lib/movies'
 import { prefetchPosters } from './lib/posters'
 
+
+class HallErrorBoundary extends React.Component {
+  constructor(props) { super(props); this.state = { error: false } }
+  static getDerivedStateFromError() { return { error: true } }
+  componentDidCatch(e) { console.error('Hall error:', e) }
+  render() {
+    if (this.state.error) {
+      return (
+        <div className="flex flex-col items-center justify-center h-full bg-base p-8 text-center gap-4">
+          <div className="text-4xl">🏛️</div>
+          <p className="text-ink-secondary text-sm">The Hall couldn't load on this device.</p>
+          <button onClick={() => this.setState({ error: false })} className="px-4 py-2 bg-gold text-black font-bold rounded-xl text-sm">Try again</button>
+        </div>
+      )
+    }
+    return this.props.children
+  }
+}
+
 export default function App() {
   const location = useLocation()
   const { player, players, loadPlayerFromDB } = useStore()
   const isHall = location.pathname === '/hall'
 
   const [dbLoaded, setDbLoaded] = useState(false)
+
+  // Safety: ensure localStorage data is valid on first load
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem('cinerank-store')
+      if (stored) {
+        const parsed = JSON.parse(stored)
+        // If store version is old or data looks wrong, clear it
+        if (!parsed?.state || parsed?.version < 2) {
+          localStorage.removeItem('cinerank-store')
+        }
+      }
+    } catch(e) {
+      // Corrupt localStorage — clear it
+      try { localStorage.removeItem('cinerank-store') } catch {}
+    }
+  }, [])
 
   // Load all players from DB on mount
   useEffect(() => {
@@ -71,7 +107,7 @@ export default function App() {
             <Route path="/mymovies"    element={<MyMovies />} />
             <Route path="/friends"     element={<Friends />} />
             <Route path="/arcade"      element={<Arcade />} />
-            <Route path="/hall"        element={<Hall />} />
+            <Route path="/hall"        element={<HallErrorBoundary><Hall /></HallErrorBoundary>} />
           </Routes>
           </React.Suspense>
         </AnimatePresence>
