@@ -45,7 +45,8 @@ export default function App() {
   }, [])
 
   return (
-    <div className="flex flex-col min-h-dvh bg-base">
+    <div className="flex justify-center bg-black" style={{ height: "100dvh", overflow: "hidden" }}>
+    <div className="flex flex-col bg-base w-full" style={{ maxWidth: 480, height: "100dvh", overflow: "hidden", position: "relative" }}>
       {/* Global overlays — always mounted */}
       <ToastContainer />
       <Confetti />
@@ -56,7 +57,7 @@ export default function App() {
       {!isHall && <Header />}
       {!isHall && !player && <PlayerSelect />}
 
-      <main className={`flex-1 overflow-hidden ${isHall ? '' : 'pb-24'}`}>
+      <main className={`flex-1 min-h-0 overflow-hidden ${isHall ? '' : 'pb-24'}`}>
         <AnimatePresence mode="wait">
           <Routes location={location} key={location.pathname}>
             <Route path="/"            element={<Navigate to="/vote" replace />} />
@@ -71,6 +72,7 @@ export default function App() {
       </main>
 
       {!isHall && <BottomNav />}
+    </div>
     </div>
   )
 }

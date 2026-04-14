@@ -35,7 +35,7 @@ function pickPair(ratings, playedPairs) {
 
 function MovieCard({ movie, rating, onPick, flash, h2h }) {
   return (
-    <motion.div layout className="relative flex-1 rounded-2xl overflow-hidden" style={{ minHeight: 'calc(50dvh - 120px)', minWidth: 0 }}>
+    <motion.div layout className="relative flex-1 rounded-2xl overflow-hidden" style={{ minWidth: 0, minHeight: 0, alignSelf: "stretch" }}>
       {/* Poster — long press opens modal */}
       <img
         src={movie.img}
@@ -171,7 +171,7 @@ export default function Vote() {
   }, [])
 
   if (!player) return (
-    <PageWrapper className="flex items-center justify-center p-8">
+    <PageWrapper scroll={true} className="flex items-center justify-center p-8">
       <div className="text-center space-y-3 animate-fade-up">
         <div className="text-5xl">⚔️</div>
         <p className="text-ink-secondary text-sm">Select your profile above to start voting</p>
@@ -180,7 +180,7 @@ export default function Vote() {
   )
 
   if (!pair) return (
-    <PageWrapper className="flex items-center justify-center p-8">
+    <PageWrapper scroll={true} className="flex items-center justify-center p-8">
       <div className="text-center space-y-4 animate-fade-up">
         <div className="text-5xl">🎉</div>
         <h2 className="text-lg font-bold text-ink-primary">All caught up!</h2>
@@ -195,7 +195,7 @@ export default function Vote() {
   const h2hWinner = h2hWinnerId ? MOVIES.find(m => m.id === h2hWinnerId)?.title : null
 
   return (
-    <PageWrapper className="flex flex-col">
+    <PageWrapper scroll={false} className="flex flex-col">
       <MatchupStats played={playedCount} remaining={remaining} pct={pct}
         ratingA={pd.ratings[movieA.id]} ratingB={pd.ratings[movieB.id]} />
 
@@ -226,7 +226,7 @@ export default function Vote() {
         <motion.div key={`${movieA.id}-${movieB.id}`}
           initial={{ opacity: 0, scale: 0.97 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.97 }}
           transition={{ duration: 0.16 }}
-          className="flex-1 flex gap-2.5 px-3 pb-2 min-h-0">
+          className="flex-1 flex gap-2 px-3 pb-2 min-h-0 overflow-hidden" style={{ minHeight: 0 }}>
           <MovieCard movie={movieA} rating={pd.ratings[movieA.id]} onPick={() => handlePick(movieA.id)}
             flash={flash === 'a'} h2h={h2hWinnerId === movieA.id ? null : null} />
           <div className="flex-shrink-0 self-center flex items-center justify-center w-7 h-7 rounded-full bg-base border border-border">

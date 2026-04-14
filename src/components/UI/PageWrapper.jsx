@@ -7,14 +7,14 @@ const variants = {
   exit:     { opacity: 0, y: -8, transition: { duration: 0.15, ease: 'easeIn' } },
 }
 
-export default function PageWrapper({ children, className = '' }) {
+export default function PageWrapper({ children, className = '', scroll = true }) {
   return (
     <motion.div
       variants={variants}
       initial="initial"
       animate="animate"
       exit="exit"
-      className={`h-full overflow-y-auto overscroll-contain no-scrollbar ${className}`}
+      className={`h-full w-full ${scroll ? 'overflow-y-auto overscroll-contain no-scrollbar' : 'overflow-hidden'} ${className}`}
       style={{ WebkitOverflowScrolling: 'touch' }}
     >
       {children}
