@@ -289,7 +289,9 @@ export default function Hall() {
         const kMat = new THREE.MeshLambertMaterial({ color: 0x1a1004 })
         mesh(new THREE.PlaneGeometry(2.7, 3.9), mGold, 0, HH/2+0.3, HL-5.05, 0, Math.PI)
         mesh(new THREE.PlaneGeometry(2.4, 3.6), kMat, 0, HH/2+0.3, HL-5.03, 0, Math.PI)
-        scene.add(Object.assign(new THREE.PointLight(0xFFEED0, 3.0, 8, 1.6), { position: new THREE.Vector3(0, HH-0.6, HL-8) }))
+        const pl2 = new THREE.PointLight(0xFFEED0, 3.0, 8, 1.6)
+        pl2.position.set(0, HH-0.6, HL-8)
+        scene.add(pl2)
         const fc2 = document.createElement('canvas'); fc2.width=400; fc2.height=600
         const fctx = fc2.getContext('2d')
         fctx.fillStyle='#1a1208'; fctx.fillRect(0,0,400,600)
