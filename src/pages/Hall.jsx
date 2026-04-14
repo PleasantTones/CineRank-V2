@@ -36,6 +36,9 @@ export default function Hall() {
   const nearestRef  = useRef(null)
   const rafRef      = useRef(null)
   const hasBuilt    = useRef(false)
+  const rendererRef  = useRef(null)
+  const sceneRef     = useRef(null)
+  const rankedRef    = useRef(rankedMovies)
 
   const { players, globalRatings, collected, collectPoster } = useStore()
   const collectedSet = useRef(new Set(collected))
@@ -50,18 +53,46 @@ export default function Hall() {
   }, [globalRatings])
 
   const hasRealData = Object.values(globalRatings).some(r => r.matches > 0)
+  rankedRef.current = rankedMovies
 
   useEffect(() => {
-    // Only build the scene once — rankedMovies reference can change without needing a rebuild
-    if (hasBuilt.current) return
     const canvas = canvasRef.current
     if (!canvas) return
-    hasBuilt.current = true
+
+    // Wait for real data before building the scene
+    let cancelled = false
+    function tryBuild() {
+      if (cancelled) return
+      if (!Object.values(useStore.getState().globalRatings).some(r => r.matches > 0)) {
+        setTimeout(tryBuild, 200)  // poll every 200ms until data arrives
+        return
+      }
+      // Update rankedMovies from current store state
+      const gr = useStore.getState().globalRatings
+      const ranked = [...MOVIES].filter(m => gr[m.id]?.matches > 0).sort((a,b) => gr[b.id].elo - gr[a.id].elo)
+      rankedRef.current = ranked.length ? ranked : [...MOVIES]
+      buildScene()
+    }
+    tryBuild()
+    return () => {
+      cancelled = true
+      try { cancelAnimationFrame(rafRef.current) } catch(e) {}
+      try {
+        if (sceneRef.current) sceneRef.current.traverse(o => {
+          if (o.geometry) o.geometry.dispose()
+          if (o.material) { Array.isArray(o.material) ? o.material.forEach(m => m.dispose()) : o.material.dispose() }
+        })
+        if (rendererRef.current) rendererRef.current.dispose()
+      } catch(e) {}
+    }
+
+    function buildScene() {
     
     // Three.js setup
 
     // ── Renderer ──────────────────────────────────────────────────────────────
     const renderer = new THREE.WebGLRenderer({ canvas, antialias: true })
+    rendererRef.current = renderer
     renderer.shadowMap.enabled = false  // disabled for performance
     renderer.outputColorSpace = THREE.SRGBColorSpace
     renderer.toneMapping = THREE.ACESFilmicToneMapping
@@ -86,6 +117,7 @@ export default function Hall() {
 
     // ── Scene ─────────────────────────────────────────────────────────────────
     const scene = new THREE.Scene()
+    sceneRef.current = scene
     scene.background = new THREE.Color(0x0d0b08)
     scene.fog = new THREE.FogExp2(0x0d0b08, isMobile ? 0.05 : 0.032)
 
@@ -231,7 +263,7 @@ export default function Hall() {
 
     // ── Paintings ─────────────────────────────────────────────────────────────
     const paintings = []
-    const allMovies = rankedMovies  // use pre-computed ranked list from store
+    const allMovies = rankedRef.current  // read latest ranked movies from ref
 
     const PW = 1.1, PH = 1.65
 
@@ -545,28 +577,19 @@ export default function Hall() {
     }
     rafRef.current = requestAnimationFrame(loop)
 
-    return () => {
-      try {
-        cancelAnimationFrame(rafRef.current)
-        window.removeEventListener('resize', resize)
-        scene.traverse(o => {
-          if (o.geometry) o.geometry.dispose()
-          if (o.material) { Array.isArray(o.material) ? o.material.forEach(m=>m.dispose()) : o.material.dispose() }
-        })
-        renderer.dispose()
-      } catch(e) { console.warn('Hall cleanup:', e) }
-    }
-  }, [rankedMovies])  // rebuild only if rankings change (first real load)
+    } // end buildScene
+  
+  }, [])  // run once on mount — canvas always present, data read from refs
 
   return (
     <div className="fixed inset-0 bg-black" style={{ zIndex: 100, touchAction: 'none' }}>
       {!hasRealData && (
-        <div className="absolute inset-0 flex flex-col items-center justify-center">
+        <div className="absolute inset-0 flex flex-col items-center justify-center z-20 bg-black">
           <div className="text-gold/60 text-sm font-semibold tracking-widest animate-pulse">LOADING HALL...</div>
           <div className="text-gold/30 text-xs mt-2">Loading rankings from server...</div>
         </div>
       )}
-      {hasRealData && <canvas ref={canvasRef} style={{ position:'absolute', inset:0, width:'100%', height:'100%' }} />}
+      <canvas ref={canvasRef} style={{ position:'absolute', inset:0, width:'100%', height:'100%', display: hasRealData ? 'block' : 'none' }} />
 
       <div ref={roomRef} className="absolute top-4 left-1/2 -translate-x-1/2 text-[11px] font-bold tracking-[0.25em] pointer-events-none whitespace-nowrap"
         style={{ color:'rgba(200,168,64,0.9)', textShadow:'0 1px 8px rgba(0,0,0,0.9)' }} />
