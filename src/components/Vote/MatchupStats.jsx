@@ -1,13 +1,13 @@
 import React from 'react'
 
-export default function MatchupStats({ ratingA, ratingB, movieA, movieB, played, remaining, pct }) {
+export default function MatchupStats({ ratingA, ratingB, played, remaining, pct }) {
   return (
-    <div className="px-4 pt-3 pb-2 space-y-3">
-      {/* Movie ELOs */}
-      <div className="flex items-center justify-between text-xs text-ink-muted font-mono">
-        <span className="font-medium text-ink-secondary">{ratingA?.elo ?? 1000} ELO</span>
-        <span className="text-ink-muted">vs</span>
-        <span className="font-medium text-ink-secondary">{ratingB?.elo ?? 1000} ELO</span>
+    <div className="flex-shrink-0 px-4 pt-3 pb-3 border-b border-border/30">
+      {/* ELO row */}
+      <div className="flex items-center justify-between text-xs font-mono mb-2.5">
+        <span className="text-ink-secondary font-semibold">{ratingA?.elo ?? 1000} ELO</span>
+        <span className="text-ink-muted text-[10px] tracking-widest">VS</span>
+        <span className="text-ink-secondary font-semibold">{ratingB?.elo ?? 1000} ELO</span>
       </div>
 
       {/* Progress bar */}

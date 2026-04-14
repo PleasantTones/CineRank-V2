@@ -68,10 +68,29 @@ export default function App() {
   useEffect(() => {
     async function load() {
       try {
-        const rows = await sbFetch('/rest/v1/ratings?select=player,movie_id,elo,wins,losses,matches,unseen')
+        // Load ratings and matchup history in parallel
+        const [ratings, matchups] = await Promise.all([
+          sbFetch('/rest/v1/ratings?select=player,movie_id,elo,wins,losses,matches,unseen'),
+          sbFetch('/rest/v1/matchups?select=player,winner_id,loser_id&limit=10000'),
+        ])
+
+        // Build per-player played pairs and h2h history from matchups
+        const playerMatchups = {}
+        PLAYERS.forEach(p => { playerMatchups[p] = { playedPairs: [], h2hHistory: {} } })
+        ;(matchups || []).forEach(m => {
+          if (!playerMatchups[m.player]) return
+          const key = [m.winner_id, m.loser_id].sort().join('__')
+          playerMatchups[m.player].playedPairs.push(key)
+          playerMatchups[m.player].h2hHistory[key] = m.winner_id
+        })
+
+        // Load each player's ratings + matchup history
         PLAYERS.forEach(p => {
-          const playerRows = (rows || []).filter(r => r.player === p)
-          if (playerRows.length) loadPlayerFromDB(p, playerRows)
+          const playerRatings = (ratings || []).filter(r => r.player === p)
+          const { playedPairs, h2hHistory } = playerMatchups[p]
+          if (playerRatings.length || playedPairs.length) {
+            loadPlayerFromDB(p, playerRatings, playedPairs, h2hHistory)
+          }
         })
       } catch(e) { console.error('Load error:', e) }
       finally { setDbLoaded(true) }

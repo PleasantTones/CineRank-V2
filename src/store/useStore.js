@@ -87,7 +87,7 @@ export const useStore = create(
       collectPoster: (id) => set(s => ({ collected: s.collected.includes(id) ? s.collected : [...s.collected, id] })),
 
       // Load from DB (merge)
-      loadPlayerFromDB: (playerName, rows) => set(s => {
+      loadPlayerFromDB: (playerName, rows, playedPairs = [], h2hHistory = {}) => set(s => {
         const ratings = initRatings()
         rows.forEach(r => {
           if (ratings[r.movie_id]) {
@@ -95,9 +95,37 @@ export const useStore = create(
           }
         })
         const existing = s.players[playerName] || defaultPlayer()
-        return {
-          players: { ...s.players, [playerName]: { ...existing, ratings } }
+        // Restore matchup history from Supabase (deduplicate playedPairs)
+        const mergedPairs = [...new Set([...playedPairs])]
+        const newPlayers = {
+          ...s.players,
+          [playerName]: {
+            ...existing,
+            ratings,
+            playedPairs: mergedPairs,
+            matchCount: mergedPairs.length,
+            h2hHistory: { ...existing.h2hHistory, ...h2hHistory },
+          }
         }
+
+        // Rebuild globalRatings from all players including the newly loaded one
+        const global = {}
+        MOVIES.forEach(m => {
+          let eloSum = 0, eloCount = 0, wins = 0, losses = 0, matches = 0
+          PLAYERS.forEach(pl => {
+            const r = newPlayers[pl]?.ratings?.[m.id]
+            if (r && r.matches > 0) {
+              eloSum += r.elo; eloCount++
+              wins += r.wins; losses += r.losses; matches += r.matches
+            }
+          })
+          global[m.id] = {
+            elo: eloCount > 0 ? Math.round(eloSum / eloCount) : 1000,
+            wins, losses, matches
+          }
+        })
+
+        return { players: newPlayers, globalRatings: global }
       }),
     }),
     {

@@ -44,8 +44,7 @@ export default function Hall() {
     const canvas = canvasRef.current
     if (!canvas) return
     
-    // Catch Three.js errors gracefully
-    try {
+    // Three.js setup
 
     // ── Renderer ──────────────────────────────────────────────────────────────
     const renderer = new THREE.WebGLRenderer({ canvas, antialias: true })
@@ -58,12 +57,16 @@ export default function Hall() {
     const isMobile = window.innerWidth < 768
 
     // Size renderer properly
+    let camera = null  // forward declaration so resize() can safely reference it
+
     function resize() {
       const W = window.innerWidth, H = window.innerHeight
-      renderer.setSize(W, H)
-      renderer.setPixelRatio(1)  // Always 1 — retina kills mobile GPU
-      camera.aspect = W / H
-      camera.updateProjectionMatrix()
+      renderer.setSize(W, H, false)
+      renderer.setPixelRatio(1)
+      if (camera) {
+        camera.aspect = W / H
+        camera.updateProjectionMatrix()
+      }
     }
     resize()
 
@@ -73,7 +76,7 @@ export default function Hall() {
     scene.fog = new THREE.FogExp2(0x0d0b08, isMobile ? 0.045 : 0.028)  // denser fog on mobile = less visible geometry
 
     // ── Camera ────────────────────────────────────────────────────────────────
-    const camera = new THREE.PerspectiveCamera(68, 1, 0.1, 55)
+    camera = new THREE.PerspectiveCamera(68, 1, 0.1, 55)  // assign to forward-declared var
     camera.position.set(0, CAM_Y, 2)  // start inside corridor
     camera.rotation.order = 'YXZ'
     let yaw = 0, pitch = 0  // yaw=0 means looking toward +Z in our setup
@@ -500,10 +503,6 @@ export default function Hall() {
     }
     rafRef.current = requestAnimationFrame(loop)
 
-    } catch(err) {
-      console.error('Hall Three.js error:', err)
-    }
-
     return () => {
       cancelAnimationFrame(rafRef.current)
       window.removeEventListener('keydown', e => { keysRef.current[e.code] = true })
@@ -519,7 +518,7 @@ export default function Hall() {
 
   return (
     <div className="fixed inset-0 bg-black" style={{ zIndex: 100, touchAction: 'none' }}>
-      <canvas ref={canvasRef} style={{ display:'block', width:'100%', height:'100%' }} />
+      <canvas ref={canvasRef} style={{ position:'absolute', inset:0, width:'100%', height:'100%' }} />
 
       <div ref={roomRef} className="absolute top-4 left-1/2 -translate-x-1/2 text-[11px] font-bold tracking-[0.25em] pointer-events-none whitespace-nowrap"
         style={{ color:'rgba(200,168,64,0.9)', textShadow:'0 1px 8px rgba(0,0,0,0.9)' }} />

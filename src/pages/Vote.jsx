@@ -43,7 +43,7 @@ function MovieCard({ movie, rating, onPick, onUnseen, flash }) {
       onHoverStart={() => setHovered(true)}
       onHoverEnd={() => setHovered(false)}
       animate={{
-        y: hovered ? -4 : 0,
+        y: hovered ? -2 : 0,
         boxShadow: hovered
           ? '0 16px 48px rgba(0,0,0,0.7), 0 0 60px rgba(200,160,64,0.08)'
           : '0 4px 16px rgba(0,0,0,0.5)',
@@ -254,6 +254,7 @@ export default function Vote() {
     <PageWrapper scroll={false} className="flex flex-col">
       <MatchupStats played={playedCount} remaining={remaining} pct={pct}
         ratingA={pd.ratings[movieA.id]} ratingB={pd.ratings[movieB.id]} />
+      <div className="h-3 flex-shrink-0" />
 
       <AnimatePresence>
         {streak >= 3 && (
@@ -283,8 +284,8 @@ export default function Vote() {
           animate={{ opacity: 1, scale: 1 }}
           exit={{ opacity: 0, scale: 0.97 }}
           transition={{ duration: 0.18 }}
-          className="flex-1 flex gap-3 px-3 pb-2 overflow-hidden"
-          style={{ minHeight: 0 }}
+          className="flex-1 flex gap-3 px-3 pb-2"
+          style={{ minHeight: 0, overflow: "hidden", paddingTop: "2px" }}
         >
           <MovieCard movie={movieA} rating={pd.ratings[movieA.id]}
             onPick={() => handlePick(movieA.id)}
