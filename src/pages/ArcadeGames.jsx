@@ -7,7 +7,7 @@ export function QuickDraw({ onEnd }) {
   const [score, setScore] = useState(0)
   const [misses, setMisses] = useState(0)
   const [posters, setPosters] = useState([])
-  const speedRef = useRef(1600)
+  const speedRef = useRef(900)  // start faster
   const runningRef = useRef(true)
   const pool = MOVIES.filter(m => m.img)
 
@@ -25,8 +25,8 @@ export function QuickDraw({ onEnd }) {
         return prev.filter(p => p.id !== id)
       })
       if (runningRef.current) {
-        speedRef.current = Math.max(600, speedRef.current - 22)
-        setTimeout(spawn, Math.max(350, speedRef.current * 0.65))
+        speedRef.current = Math.max(320, speedRef.current - 35)  // ramp faster, min 320ms
+        setTimeout(spawn, Math.max(180, speedRef.current * 0.55))  // shorter gap between spawns
       }
     }, speedRef.current)
   }
@@ -41,12 +41,12 @@ export function QuickDraw({ onEnd }) {
   }, [misses])
 
   return (
-    <div>
-      <div className="flex justify-between items-center mb-3 px-1">
+    <div className="absolute inset-0 flex flex-col p-3 gap-2">
+      <div className="flex justify-between items-center px-1 flex-shrink-0">
         <span className="text-gold font-bold font-mono text-xl">{score}</span>
         <div className="flex gap-1">{[0,1,2].map(i => <span key={i} className="text-base">{i < misses ? '❌' : '⬜'}</span>)}</div>
       </div>
-      <div className="relative bg-raised rounded-2xl overflow-hidden" style={{ height: 340 }}>
+      <div className="relative bg-raised rounded-2xl overflow-hidden flex-1">
         <p className="absolute top-3 left-0 right-0 text-center text-[10px] text-ink-muted">Tap posters before they vanish</p>
         {posters.map(p => (
           <motion.button key={p.id} initial={{ scale:0,opacity:0 }} animate={{ scale:1,opacity:1 }}
@@ -105,20 +105,22 @@ export function MemoryMatch({ onEnd }) {
   }
 
   return (
-    <div className="space-y-3">
-      <div className="flex justify-between px-1">
+    <div className="absolute inset-0 flex flex-col gap-3 p-3">
+      <div className="flex justify-between px-1 flex-shrink-0">
         <span className="text-gold font-bold font-mono">{score} pts</span>
         <span className={`font-bold font-mono ${timeLeft <= 10 ? 'text-lose' : 'text-ink-secondary'}`}>{timeLeft}s</span>
       </div>
-      <div className="grid grid-cols-4 gap-2">
-        {cards.map(card => (
-          <motion.button key={card.id} onClick={() => flip(card)} whileTap={{ scale: 0.94 }}
-            className={`aspect-[2/3] rounded-xl overflow-hidden border-2 transition-all ${card.matched ? 'border-win opacity-60' : card.flipped ? 'border-gold' : 'border-border'}`}>
-            {card.flipped || card.matched
-              ? <img src={card.movie.img} className="w-full h-full object-cover" />
-              : <div className="w-full h-full bg-raised flex items-center justify-center text-2xl">🎬</div>}
-          </motion.button>
-        ))}
+      <div className="flex-1 min-h-0 flex items-center justify-center">
+        <div className="grid grid-cols-4 gap-2 w-full" style={{maxHeight:'100%'}}>
+          {cards.map(card => (
+            <motion.button key={card.id} onClick={() => flip(card)} whileTap={{ scale: 0.94 }}
+              className={`aspect-[2/3] rounded-xl overflow-hidden border-2 transition-all ${card.matched ? 'border-win opacity-60' : card.flipped ? 'border-gold' : 'border-border'}`}>
+              {card.flipped || card.matched
+                ? <img src={card.movie.img} className="w-full h-full object-cover" />
+                : <div className="w-full h-full bg-raised flex items-center justify-center text-2xl">🎬</div>}
+            </motion.button>
+          ))}
+        </div>
       </div>
     </div>
   )

@@ -130,8 +130,8 @@ export default function BoxOfficeSnake({ onEnd }) {
         </div>
       )}
       <div className="relative">
-        <canvas ref={canvasRef} className="block w-full rounded-2xl bg-base" style={{ touchAction: "none" }}
-          style={{ aspectRatio: `${W}/${H}` }}
+        <canvas ref={canvasRef} className="block rounded-2xl bg-base"
+          style={{ touchAction:"none", maxWidth:"100%", maxHeight:"100%", width:"auto", height:"auto", aspectRatio:`${W}/${H}` }}
           onTouchStart={e => { swipeRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY } }}
           onTouchEnd={e => {
             if (!swipeRef.current) return

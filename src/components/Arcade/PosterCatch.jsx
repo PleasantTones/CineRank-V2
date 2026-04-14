@@ -109,10 +109,9 @@ export default function PosterCatch({ onEnd }) {
   }, [])
 
   return (
-    <div className="flex-1 min-h-0 flex flex-col items-center justify-center gap-2 p-2">
-      <div className="relative w-full flex items-center justify-center" style={{maxHeight:"calc(100% - 40px)"}}>
-        <canvas ref={canvasRef} className="block w-full rounded-2xl bg-base"
-          style={{ aspectRatio: `${W}/${H}`, touchAction: 'none' }} />
+    <div className="absolute inset-0 flex flex-col">
+      <div className="flex-1 relative flex items-center justify-center overflow-hidden">
+        <canvas ref={canvasRef} className="rounded-2xl" style={{ touchAction:"none", width:"100%", height:"100%", objectFit:"contain", display:"block" }} />
         {phase !== 'playing' && (
           <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/80 rounded-2xl">
             {phase === 'dead' ? (
