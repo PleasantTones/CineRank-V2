@@ -20,8 +20,8 @@ const MILESTONE_MSGS = {
   100: '👑 All pairs voted! You\'re a CineRank god.',
 }
 
-function pickPair(ratings, playedPairs) {
-  const seen = MOVIES.filter(m => !ratings[m.id]?.unseen)
+function pickPair(ratings, playedPairs, movies = MOVIES) {
+  const seen = movies.filter(m => !ratings[m.id]?.unseen)
   if (seen.length < 2) return null
   const played = new Set(playedPairs || [])
   const unplayed = []
@@ -131,7 +131,8 @@ function MovieCard({ movie, rating, onPick, onUnseen, flash }) {
 }
 
 export default function Vote() {
-  const { player, players, vote, undoVote, markUnseen, muted } = useStore()
+  const { player, players, vote, undoVote, markUnseen, muted, dynamicMovies } = useStore()
+  const allMovies = getAllMovies(dynamicMovies)
   const [streak, setStreak] = useState(0)
   const [flash, setFlash] = useState(null)
   const [voteCount, setVoteCount] = useState(0)
@@ -140,11 +141,11 @@ export default function Vote() {
 
   const pd = player ? players[player] : null
   const pair = useMemo(
-    () => pd ? pickPair(pd.ratings, pd.playedPairs) : null,
+    () => pd ? pickPair(pd.ratings, pd.playedPairs, allMovies) : null,
     [pd?.playedPairs?.length, voteCount]
   )
 
-  const seenCount = pd ? MOVIES.filter(m => !pd.ratings[m.id]?.unseen).length : 0
+  const seenCount = pd ? allMovies.filter(m => !pd.ratings[m.id]?.unseen).length : 0
   const totalPairs = seenCount * (seenCount - 1) / 2
   const playedCount = pd?.playedPairs?.length ?? 0
   const remaining = Math.max(0, totalPairs - playedCount)

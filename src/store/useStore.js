@@ -21,6 +21,7 @@ export const useStore = create((set, get) => ({
 
   players: Object.fromEntries(PLAYERS.map(p => [p, defaultPlayer()])),
   globalRatings: defaultGlobal(),
+  dynamicMovies: [],   // movies loaded from Supabase season_movies table
   collected: [],
   muted: localStorage.getItem('cinerank-muted') === 'true',
   toggleMuted: () => set(s => {
@@ -64,6 +65,21 @@ export const useStore = create((set, get) => ({
     const p = s.player; if (!p) return {}
     const pd = s.players[p]
     return { players: { ...s.players, [p]: { ...pd, ratings: { ...pd.ratings, [movieId]: { ...pd.ratings[movieId], unseen: false } } } } }
+  }),
+
+  // Merge Supabase season movies into the store
+  loadDynamicMovies: (rows) => set(() => {
+    const dynamic = (rows || []).map(r => ({
+      id: r.id,
+      title: r.title,
+      img: null,    // no thumbnail — OMDB poster loads from imdb_id
+      imdbId: r.imdb_id,
+      tmdbId: r.tmdb_id,
+      releaseDate: r.release_date,
+      season: r.season,
+      dynamic: true,
+    }))
+    return { dynamicMovies: dynamic }
   }),
 
   collectPoster: (id) => set(s => ({

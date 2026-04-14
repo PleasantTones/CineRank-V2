@@ -7,8 +7,9 @@ export function QuickDraw({ onEnd }) {
   const [score, setScore] = useState(0)
   const [misses, setMisses] = useState(0)
   const [posters, setPosters] = useState([])
-  const speedRef = useRef(900)  // start faster
+  const speedRef = useRef(900)
   const runningRef = useRef(true)
+  const clickedRef = useRef(new Set())  // track clicked IDs so timeout never double-counts
   const pool = MOVIES.filter(m => m.img)
 
   function spawn() {
@@ -17,16 +18,21 @@ export function QuickDraw({ onEnd }) {
     const id = Date.now() + Math.random()
     setPosters(prev => [...prev, { id, movie: m, x: 5 + Math.random() * 72, y: 10 + Math.random() * 65 }])
     setTimeout(() => {
-      setPosters(prev => {
-        const exists = prev.find(p => p.id === id)
-        if (exists) {
-          setMisses(m => { const nm = m+1; if (nm >= 3) runningRef.current = false; return nm })
-        }
-        return prev.filter(p => p.id !== id)
-      })
+      if (clickedRef.current.has(id)) {
+        // Already clicked — don't count as miss, just clean up
+        clickedRef.current.delete(id)
+      } else {
+        setPosters(prev => {
+          const exists = prev.find(p => p.id === id)
+          if (exists) {
+            setMisses(m => { const nm = m+1; if (nm >= 3) runningRef.current = false; return nm })
+          }
+          return prev.filter(p => p.id !== id)
+        })
+      }
       if (runningRef.current) {
-        speedRef.current = Math.max(320, speedRef.current - 35)  // ramp faster, min 320ms
-        setTimeout(spawn, Math.max(180, speedRef.current * 0.55))  // shorter gap between spawns
+        speedRef.current = Math.max(320, speedRef.current - 35)
+        setTimeout(spawn, Math.max(180, speedRef.current * 0.55))
       }
     }, speedRef.current)
   }
@@ -53,8 +59,9 @@ export function QuickDraw({ onEnd }) {
             style={{ position:'absolute', left:`${p.x}%`, top:`${p.y}%` }}
             className="w-14 h-20 rounded-xl overflow-hidden border-2 border-gold/40 shadow-lg active:scale-95 transition-transform"
             onClick={() => {
+              clickedRef.current.add(p.id)  // mark as clicked BEFORE state update
               setPosters(prev => prev.filter(pp => pp.id !== p.id))
-              setScore(s => s + Math.max(10, Math.round(100 * speedRef.current / 1600)))
+              setScore(s => s + Math.max(10, Math.round(100 * speedRef.current / 900)))
               if (navigator.vibrate) navigator.vibrate(15)
             }}>
             <img src={p.movie.img} className="w-full h-full object-cover" />

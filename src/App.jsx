@@ -15,6 +15,7 @@ import MyMovies from './pages/MyMovies'
 import Friends from './pages/Friends'
 import Arcade from './pages/Arcade'
 const Hall = React.lazy(() => import('./pages/Hall'))
+const Admin = React.lazy(() => import('./pages/Admin'))
 import { useStore } from './store/useStore'
 import { useState } from 'react'
 import { sbFetch } from './lib/supabase'
@@ -59,6 +60,13 @@ export default function App() {
         ])
 
         console.log('[CineRank] Loaded ratings:', (ratings||[]).length, 'rows')
+        // Also load dynamic season movies
+        let seasonMovies = []
+        try { seasonMovies = await sbFetch('/rest/v1/season_movies?select=*&active=eq.true&order=added_at.asc') || [] } catch(e) { console.warn('[CineRank] No season_movies table yet') }
+        if (seasonMovies.length > 0) {
+          useStore.getState().loadDynamicMovies(seasonMovies)
+          console.log('[CineRank] Loaded', seasonMovies.length, 'season movies')
+        }
         console.log('[CineRank] Loaded matchups:', (matchups||[]).length, 'rows')
 
         // Build per-player played pairs from matchups
@@ -125,6 +133,7 @@ export default function App() {
             <Route path="/friends"     element={<Friends />} />
             <Route path="/arcade"      element={<Arcade />} />
             <Route path="/hall"        element={<HallErrorBoundary><Hall /></HallErrorBoundary>} />
+            <Route path="/admin"       element={<Admin />} />
           </Routes>
           </React.Suspense>
         </AnimatePresence>

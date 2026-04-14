@@ -134,3 +134,18 @@ export const IMDB_URLS = {
   'M0055': 'https://www.imdb.com/title/tt27200708/',
   'M0056': 'https://www.imdb.com/title/tt32393988/'
 };
+
+// Returns hardcoded MOVIES merged with dynamic movies from Supabase
+// Pass in dynamicMovies from useStore
+export function getAllMovies(dynamicMovies = []) {
+  const hardcodedIds = new Set(MOVIES.map(m => m.id))
+  const extras = dynamicMovies.filter(m => !hardcodedIds.has(m.id))
+  return [...MOVIES, ...extras]
+}
+
+// Get IMDB URL for any movie (hardcoded or dynamic)
+export function getImdbUrl(movie) {
+  if (IMDB_URLS[movie.id]) return IMDB_URLS[movie.id]
+  if (movie.imdbId) return 'https://www.imdb.com/title/' + movie.imdbId + '/'
+  return null
+}

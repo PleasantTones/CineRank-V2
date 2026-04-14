@@ -1,109 +1,131 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react'
 import { MOVIES } from '../../lib/movies'
 
-const W = 390, H = 600
-const GROUND_Y = H - 80
-const PLAYER_W = 44, PLAYER_H = 60
-const LANE_COUNT = 5
-const LANE_W = W / LANE_COUNT
+const W = 420, H = 560
+const LANES = [-1, 0, 1]           // left / center / right offsets
+const LANE_SEP = 130               // pixel separation at ground level
+const VP_X = W / 2, VP_Y = H * 0.36  // vanishing point
+const GROUND_Y = H - 40
 
-function getLaneX(lane) { return LANE_W * lane + LANE_W / 2 }
+function laneXAtZ(lane, z) {
+  // z=0 → at player (ground), z=1 → horizon
+  const base = VP_X + lane * LANE_SEP
+  return VP_X + (base - VP_X) * (1 - z)
+}
 
-function drawScene(ctx, state) {
-  const { frame, playerX, playerLane, obstacles, score, lives, speed } = state
+function drawHallway(ctx, frame, obstacles, playerLane, lives, score, speed) {
+  // Sky / ceiling
+  const sky = ctx.createLinearGradient(0, 0, 0, VP_Y)
+  sky.addColorStop(0, '#08060f')
+  sky.addColorStop(1, '#14101f')
+  ctx.fillStyle = sky; ctx.fillRect(0, 0, W, VP_Y)
 
-  // Background — dark cinematic
-  const bg = ctx.createLinearGradient(0, 0, 0, H)
-  bg.addColorStop(0, '#0a0810')
-  bg.addColorStop(1, '#120e1a')
-  ctx.fillStyle = bg; ctx.fillRect(0, 0, W, H)
+  // Floor
+  const floor = ctx.createLinearGradient(0, VP_Y, 0, H)
+  floor.addColorStop(0, '#12100a')
+  floor.addColorStop(1, '#1e1808')
+  ctx.fillStyle = floor; ctx.fillRect(0, VP_Y, W, H - VP_Y)
 
-  // Scrolling lane lines
-  ctx.strokeStyle = 'rgba(200,160,64,0.12)'; ctx.lineWidth = 1
-  for (let i = 1; i < LANE_COUNT; i++) {
-    ctx.beginPath(); ctx.setLineDash([24, 20])
-    ctx.lineDashOffset = -(frame * speed * 3) % 44
-    ctx.moveTo(LANE_W * i, 0); ctx.lineTo(LANE_W * i, GROUND_Y)
-    ctx.stroke()
+  // Corridor walls — left and right perspective planes
+  const wallAlpha = 0.25
+  ctx.fillStyle = `rgba(30,24,10,${wallAlpha})`
+  ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(VP_X - LANE_SEP, VP_Y)
+  ctx.lineTo(0, GROUND_Y); ctx.closePath(); ctx.fill()
+  ctx.beginPath(); ctx.moveTo(W, 0); ctx.lineTo(VP_X + LANE_SEP, VP_Y)
+  ctx.lineTo(W, GROUND_Y); ctx.closePath(); ctx.fill()
+
+  // Gold corridor border lines
+  ctx.strokeStyle = 'rgba(200,160,64,0.5)'; ctx.lineWidth = 2
+  ctx.beginPath(); ctx.moveTo(VP_X - LANE_SEP, VP_Y); ctx.lineTo(0, GROUND_Y); ctx.stroke()
+  ctx.beginPath(); ctx.moveTo(VP_X + LANE_SEP, VP_Y); ctx.lineTo(W, GROUND_Y); ctx.stroke()
+
+  // Scrolling floor grid lines
+  const scroll = (frame * speed * 0.04) % 1
+  for (let i = 0; i < 10; i++) {
+    const t = Math.pow((i / 10 + scroll) % 1, 1.6)
+    if (t < 0.05) continue
+    const y = VP_Y + (GROUND_Y - VP_Y) * t
+    const lx = VP_X - LANE_SEP + (0 - (VP_X - LANE_SEP)) * (1 - t)
+    const rx = VP_X + LANE_SEP + (W - (VP_X + LANE_SEP)) * (1 - t)
+    ctx.strokeStyle = `rgba(200,160,64,${0.06 + t * 0.12})`; ctx.lineWidth = 1
+    ctx.beginPath(); ctx.moveTo(lx, y); ctx.lineTo(rx, y); ctx.stroke()
   }
-  ctx.setLineDash([])
+  // Lane dividers
+  LANES.forEach(lane => {
+    ctx.strokeStyle = 'rgba(200,160,64,0.10)'; ctx.lineWidth = 1
+    ctx.beginPath(); ctx.moveTo(VP_X + lane * 0, VP_Y)
+    ctx.lineTo(VP_X + lane * LANE_SEP, GROUND_Y); ctx.stroke()
+  })
 
-  // Ground
-  const grd = ctx.createLinearGradient(0, GROUND_Y, 0, H)
-  grd.addColorStop(0, '#1a1208'); grd.addColorStop(1, '#0d0905')
-  ctx.fillStyle = grd; ctx.fillRect(0, GROUND_Y, W, H - GROUND_Y)
-  ctx.strokeStyle = 'rgba(200,160,64,0.4)'; ctx.lineWidth = 2
-  ctx.beginPath(); ctx.moveTo(0, GROUND_Y); ctx.lineTo(W, GROUND_Y); ctx.stroke()
+  // Ceiling gold strip
+  ctx.fillStyle = 'rgba(200,160,64,0.15)'; ctx.fillRect(VP_X - LANE_SEP, VP_Y - 2, LANE_SEP * 2, 3)
 
-  // Gold ground accent
-  ctx.strokeStyle = 'rgba(200,160,64,0.15)'; ctx.lineWidth = 1
-  ctx.beginPath(); ctx.moveTo(0, GROUND_Y + 8); ctx.lineTo(W, GROUND_Y + 8); ctx.stroke()
-
-  // Obstacles (falling posters)
-  obstacles.forEach(ob => {
-    const x = getLaneX(ob.lane) - ob.w/2
-    const alpha = Math.min(1, (GROUND_Y - ob.y) / 120)
-    ctx.save(); ctx.globalAlpha = Math.max(0.1, alpha)
-    // Shadow
-    ctx.fillStyle = 'rgba(0,0,0,0.3)'
-    ctx.fillRect(x + 3, ob.y + ob.h + 2, ob.w, 6)
-    // Frame
-    ctx.fillStyle = ob.hit ? '#7f1d1d' : '#8B6914'
-    ctx.fillRect(x - 3, ob.y - 3, ob.w + 6, ob.h + 6)
-    // Poster
+  // Obstacles — movie posters flying toward camera
+  const sorted = [...obstacles].sort((a, b) => b.z - a.z)
+  sorted.forEach(ob => {
+    const z = ob.z  // 1=far, 0=close
+    const scale = Math.pow(1 - z, 1.1) * 1.4 + 0.08
+    const cx = laneXAtZ(LANES[ob.lane] * LANE_SEP / LANE_SEP, z)
+    const pw = 72 * scale, ph = 108 * scale
+    const px = cx - pw / 2
+    const py = VP_Y + (GROUND_Y - VP_Y) * (1 - z) - ph + 10 * scale
+    const alpha = Math.max(0, Math.min(1, (1 - z) * 3))
+    if (alpha < 0.05) return
+    ctx.save(); ctx.globalAlpha = alpha
+    // Drop shadow
+    ctx.fillStyle = 'rgba(0,0,0,0.4)'
+    ctx.beginPath(); ctx.ellipse(cx, py + ph + 4, pw * 0.4, 6 * scale, 0, 0, Math.PI * 2); ctx.fill()
+    // Gold frame
+    const frameCol = ob.hit ? '#7f1d1d' : '#B8922A'
+    ctx.fillStyle = frameCol; ctx.fillRect(px - 4*scale, py - 4*scale, pw + 8*scale, ph + 8*scale)
+    // Dark mat
+    ctx.fillStyle = '#1a0e04'; ctx.fillRect(px - 1, py - 1, pw + 2, ph + 2)
+    // Poster image or fallback
     if (ob.img?.complete && ob.img.naturalWidth > 0) {
-      ctx.drawImage(ob.img, x, ob.y, ob.w, ob.h)
+      ctx.drawImage(ob.img, px, py, pw, ph)
     } else {
-      const pg = ctx.createLinearGradient(x, ob.y, x, ob.y + ob.h)
-      pg.addColorStop(0, '#2a1a08'); pg.addColorStop(1, '#1a0e04')
-      ctx.fillStyle = pg; ctx.fillRect(x, ob.y, ob.w, ob.h)
-      ctx.fillStyle = 'rgba(200,160,64,0.6)'; ctx.font = 'bold 10px Inter,sans-serif'
-      ctx.textAlign = 'center'
-      const words = (ob.title || '').split(' ')
-      let line = '', lines = [], maxW = ob.w - 8
-      words.forEach(w => {
-        const t = line ? line + ' ' + w : w
-        if (ctx.measureText(t).width > maxW) { lines.push(line); line = w } else line = t
-      }); lines.push(line)
-      lines.slice(0, 3).forEach((l, i) => ctx.fillText(l, x + ob.w/2, ob.y + ob.h/2 - 8 + i * 13))
+      const grad = ctx.createLinearGradient(px, py, px, py + ph)
+      grad.addColorStop(0, '#2a1a08'); grad.addColorStop(1, '#120a02')
+      ctx.fillStyle = grad; ctx.fillRect(px, py, pw, ph)
+      if (scale > 0.35) {
+        ctx.fillStyle = `rgba(200,160,64,${scale})`
+        ctx.font = `bold ${Math.round(9 * scale)}px Inter,sans-serif`
+        ctx.textAlign = 'center'
+        const title = ob.title || ''
+        const words = title.split(' '); let line = '', lines = []
+        words.forEach(w => { const t = line ? line + ' ' + w : w; ctx.measureText(t).width > pw - 8 ? (lines.push(line), line = w) : (line = t) }); lines.push(line)
+        lines.slice(0, 3).forEach((l, i) => ctx.fillText(l, px + pw/2, py + ph/2 - 6 + i * (10 * scale)))
+      }
     }
-    // Hit flash
-    if (ob.hit) { ctx.fillStyle = 'rgba(239,68,68,0.35)'; ctx.fillRect(x, ob.y, ob.w, ob.h) }
+    if (ob.hit) { ctx.fillStyle = 'rgba(239,68,68,0.4)'; ctx.fillRect(px, py, pw, ph) }
     ctx.restore()
   })
 
-  // Player — cinematic figure
-  const px = playerX - PLAYER_W/2
-  const py = GROUND_Y - PLAYER_H
-  // Shadow
-  ctx.fillStyle = 'rgba(0,0,0,0.4)'
-  ctx.beginPath(); ctx.ellipse(playerX, GROUND_Y, PLAYER_W/2, 8, 0, 0, Math.PI*2); ctx.fill()
-  // Body
-  const playerGrad = ctx.createLinearGradient(px, py, px + PLAYER_W, py + PLAYER_H)
-  playerGrad.addColorStop(0, '#e8d5a0'); playerGrad.addColorStop(1, '#c4a050')
-  ctx.fillStyle = playerGrad; ctx.fillRect(px + 8, py + 20, PLAYER_W - 16, PLAYER_H - 20)
-  // Head
-  ctx.fillStyle = '#f5e6c0'; ctx.beginPath()
-  ctx.arc(playerX, py + 13, 13, 0, Math.PI * 2); ctx.fill()
-  // Star / gold shimmer on player
-  ctx.fillStyle = 'rgba(200,160,64,0.8)'
-  ctx.beginPath(); ctx.arc(playerX, py + 13, 5, 0, Math.PI * 2); ctx.fill()
+  // Player indicator — gold glow at bottom center
+  const px2 = VP_X + LANES[playerLane] * LANE_SEP
+  ctx.save()
+  const glow = ctx.createRadialGradient(px2, GROUND_Y, 0, px2, GROUND_Y, 40)
+  glow.addColorStop(0, 'rgba(200,160,64,0.5)'); glow.addColorStop(1, 'rgba(200,160,64,0)')
+  ctx.fillStyle = glow; ctx.beginPath(); ctx.ellipse(px2, GROUND_Y, 40, 16, 0, 0, Math.PI*2); ctx.fill()
+  ctx.fillStyle = 'rgba(200,160,64,0.9)'; ctx.beginPath(); ctx.ellipse(px2, GROUND_Y, 18, 7, 0, 0, Math.PI*2); ctx.fill()
+  // Arrow indicator
+  ctx.fillStyle = '#fff'; ctx.font = 'bold 18px Inter'; ctx.textAlign = 'center'
+  ctx.fillText('▲', px2, GROUND_Y - 16)
+  ctx.restore()
 
   // HUD
-  ctx.fillStyle = 'rgba(0,0,0,0.5)'; ctx.fillRect(0, 0, W, 48)
-  ctx.fillStyle = 'rgba(200,160,64,0.9)'; ctx.font = 'bold 22px Inter,sans-serif'
-  ctx.textAlign = 'left'; ctx.fillText(Math.round(score), 14, 32)
-  // Hearts
-  ctx.font = '18px serif'; ctx.textAlign = 'right'
+  ctx.fillStyle = 'rgba(0,0,0,0.6)'; ctx.fillRect(0, 0, W, 44)
+  ctx.fillStyle = 'rgba(200,160,64,0.95)'; ctx.font = 'bold 22px Inter,sans-serif'
+  ctx.textAlign = 'left'; ctx.fillText(Math.round(score), 14, 30)
+  ctx.textAlign = 'right'
   for (let i = 0; i < 3; i++) {
-    ctx.fillStyle = i < lives ? '#ef4444' : 'rgba(100,100,100,0.4)'
-    ctx.fillText('♥', W - 14 - i * 26, 32)
+    ctx.fillStyle = i < lives ? '#ef4444' : 'rgba(80,80,80,0.5)'
+    ctx.fillText('♥', W - 14 - i * 28, 30)
   }
-  // Speed indicator
-  const pct = Math.min(1, (speed - 2) / 6)
-  ctx.fillStyle = 'rgba(255,255,255,0.08)'; ctx.fillRect(W/2 - 40, 10, 80, 6)
-  ctx.fillStyle = `hsl(${Math.round(120 - pct*120)},80%,55%)`
-  ctx.fillRect(W/2 - 40, 10, 80 * pct, 6)
+  // Speed bar
+  const pct = Math.min(1, (speed - 1.5) / 5)
+  ctx.fillStyle = 'rgba(255,255,255,0.07)'; ctx.fillRect(W/2 - 36, 16, 72, 5)
+  ctx.fillStyle = `hsl(${Math.round(120 - pct * 120)},80%,55%)`; ctx.fillRect(W/2 - 36, 16, 72 * pct, 5)
 }
 
 export default function CinemaRunner({ onEnd }) {
@@ -112,65 +134,58 @@ export default function CinemaRunner({ onEnd }) {
   const canvasRef = useRef(null)
   const stateRef = useRef(null)
   const rafRef = useRef(null)
+  const touchRef = useRef(null)
 
   const start = useCallback(() => {
     const canvas = canvasRef.current; if (!canvas) return
     canvas.width = W; canvas.height = H
     const ctx = canvas.getContext('2d')
-
     const pool = [...MOVIES].filter(m => m.img).sort(() => Math.random() - 0.5)
     const imgCache = {}
     pool.forEach(m => { const img = new Image(); img.src = m.img; imgCache[m.id] = img })
 
-    const initLane = 2
     stateRef.current = {
-      active: true, score: 0, speed: 2, frame: 0,
-      playerLane: initLane, playerX: getLaneX(initLane), targetLane: initLane,
+      active: true, score: 0, speed: 1.5, frame: 0,
+      playerLane: 1, targetLane: 1,
       obstacles: [], lives: 3, spawnTimer: 0,
-      pool, poolIdx: 0, imgCache, ctx
+      pool, poolIdx: 0, imgCache
     }
     setPhase('playing')
 
     function loop() {
       const s = stateRef.current; if (!s?.active) return
       s.frame++
-      s.score += s.speed * 0.08
-      s.speed = Math.min(8, 2 + s.frame * 0.0015)
+      s.score += s.speed * 0.06
+      s.speed = Math.min(6.5, 1.5 + s.frame * 0.001)
 
-      // Smooth player movement
-      const targetX = getLaneX(s.targetLane)
-      s.playerX += (targetX - s.playerX) * 0.22
+      // Smooth lane transition
+      if (s.playerLane !== s.targetLane) s.playerLane = s.targetLane
 
-      // Spawn obstacles
+      // Spawn
       s.spawnTimer++
-      const spawnInterval = Math.max(28, 65 - s.speed * 5)
-      if (s.spawnTimer >= spawnInterval) {
+      const spawnGap = Math.max(32, 75 - s.speed * 7)
+      if (s.spawnTimer >= spawnGap) {
         s.spawnTimer = 0
-        const lane = Math.floor(Math.random() * LANE_COUNT)
+        const lane = Math.floor(Math.random() * 3)
         const m = s.pool[s.poolIdx % s.pool.length]; s.poolIdx++
-        const w = 54, h = 78
-        s.obstacles.push({ lane, y: -h - 10, w, h, movieId: m.id, title: m.title, img: imgCache[m.id], hit: false, hitTimer: 0 })
+        s.obstacles.push({ lane, z: 0.98, title: m.title, img: imgCache[m.id], hit: false })
       }
 
-      // Move obstacles down
-      s.obstacles.forEach(ob => { ob.y += s.speed * 2.2 })
+      // Move obstacles toward camera
+      s.obstacles.forEach(ob => { ob.z -= 0.016 * s.speed })
 
-      // Collision
-      const px = s.playerX, py = GROUND_Y - PLAYER_H
+      // Collision — when obstacle is close (z < 0.1) and in same lane
       s.obstacles.forEach(ob => {
-        if (ob.hit) return
-        const ox = getLaneX(ob.lane)
-        const dx = Math.abs(px - ox), dy = Math.abs((py + PLAYER_H/2) - (ob.y + ob.h/2))
-        if (dx < (PLAYER_W/2 + ob.w/2) * 0.7 && dy < (PLAYER_H/2 + ob.h/2) * 0.65) {
-          ob.hit = true; ob.hitTimer = 12
+        if (!ob.hit && ob.z < 0.08 && ob.z > -0.04 && ob.lane === s.targetLane) {
+          ob.hit = true
           s.lives--
-          if (navigator.vibrate) navigator.vibrate([60, 30, 60])
+          if (navigator.vibrate) navigator.vibrate([50, 30, 80])
           if (s.lives <= 0) { s.active = false; setScore(Math.round(s.score)); setPhase('dead') }
         }
       })
-      s.obstacles = s.obstacles.filter(ob => ob.y < H + 20)
+      s.obstacles = s.obstacles.filter(ob => ob.z > -0.12)
 
-      drawScene(ctx, s)
+      drawHallway(ctx, s.frame, s.obstacles, s.playerLane, s.lives, s.score, s.speed)
       if (s.active) rafRef.current = requestAnimationFrame(loop)
     }
     rafRef.current = requestAnimationFrame(loop)
@@ -178,11 +193,9 @@ export default function CinemaRunner({ onEnd }) {
 
   const changeLane = useCallback((dir) => {
     const s = stateRef.current; if (!s?.active) return
-    s.targetLane = Math.max(0, Math.min(LANE_COUNT - 1, s.targetLane + dir))
-    s.playerLane = s.targetLane
+    s.targetLane = Math.max(0, Math.min(2, s.targetLane + dir))
   }, [])
 
-  // Keyboard
   useEffect(() => {
     const handler = e => {
       if (e.key === 'ArrowLeft' || e.key === 'a') { e.preventDefault(); changeLane(-1) }
@@ -192,56 +205,51 @@ export default function CinemaRunner({ onEnd }) {
     return () => { window.removeEventListener('keydown', handler); cancelAnimationFrame(rafRef.current) }
   }, [changeLane])
 
-  // Draw idle screen
   useEffect(() => {
     const canvas = canvasRef.current; if (!canvas) return
     canvas.width = W; canvas.height = H
     const ctx = canvas.getContext('2d')
-    drawScene(ctx, { frame: 0, playerX: getLaneX(2), playerLane: 2, obstacles: [], score: 0, lives: 3, speed: 2 })
+    drawHallway(ctx, 0, [], 1, 3, 0, 1.5)
   }, [])
 
-  // Touch swipe
-  const touchRef = useRef(null)
-  const onTouchStart = e => { touchRef.current = e.touches[0].clientX }
-  const onTouchEnd = e => {
-    if (touchRef.current === null) return
-    const dx = e.changedTouches[0].clientX - touchRef.current
-    if (Math.abs(dx) > 30) changeLane(dx > 0 ? 1 : -1)
-    touchRef.current = null
-  }
-
   return (
-    <div className="absolute inset-0 flex flex-col">
-      <div className="flex-1 relative flex items-center justify-center overflow-hidden bg-black"
-        onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
+    <div className="absolute inset-0 flex flex-col bg-black">
+      <div className="flex-1 relative flex items-center justify-center overflow-hidden"
+        onTouchStart={e => { touchRef.current = e.touches[0].clientX }}
+        onTouchEnd={e => {
+          if (touchRef.current === null) return
+          const dx = e.changedTouches[0].clientX - touchRef.current
+          if (Math.abs(dx) > 28) changeLane(dx > 0 ? 1 : -1)
+          touchRef.current = null
+        }}>
         <canvas ref={canvasRef}
           style={{ touchAction:'none', maxWidth:'100%', maxHeight:'100%', width:'auto', height:'auto', aspectRatio:`${W}/${H}` }} />
         {phase !== 'playing' && (
-          <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/75 backdrop-blur-sm">
+          <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/80 backdrop-blur-sm">
             {phase === 'dead' ? (
               <>
                 <div className="text-5xl mb-3">🎬</div>
-                <div className="text-xl font-black text-white mb-1">Cut!</div>
+                <div className="text-2xl font-black text-white mb-1">Cut!</div>
                 <div className="text-4xl font-black text-gold font-mono mb-6">{score}</div>
                 <div className="flex gap-3">
                   <button onClick={start} className="px-6 py-3 bg-gold text-black font-bold rounded-xl">Play Again</button>
-                  <button onClick={() => onEnd(score)} className="px-6 py-3 bg-surface border border-border rounded-xl text-sm font-semibold text-ink-secondary">Done</button>
+                  <button onClick={() => onEnd(score)} className="px-5 py-2.5 bg-surface border border-border rounded-xl text-sm font-semibold text-ink-secondary">Done</button>
                 </div>
               </>
             ) : (
               <>
                 <div className="text-5xl mb-4">🎬</div>
                 <div className="text-2xl font-black text-white mb-2">Cinema Runner</div>
-                <div className="text-sm text-ink-muted mb-1 text-center px-8">Dodge falling movie posters.</div>
-                <div className="text-xs text-ink-muted mb-6 text-center px-8">← → keys, A/D, or swipe to move</div>
-                <button onClick={start} className="px-8 py-3 bg-gold text-black font-black rounded-xl text-lg">Start →</button>
+                <div className="text-sm text-ink-muted mb-1">Dodge posters flying down the hall.</div>
+                <div className="text-xs text-ink-muted mb-6">← → to switch lanes · swipe on mobile</div>
+                <button onClick={start} className="px-8 py-3 bg-gold text-black font-black rounded-xl text-lg">Run! →</button>
               </>
             )}
           </div>
         )}
       </div>
       {phase === 'playing' && (
-        <div className="flex-shrink-0 grid grid-cols-2 gap-2 p-2 bg-black">
+        <div className="flex-shrink-0 grid grid-cols-2 gap-2 p-2">
           <button onPointerDown={() => changeLane(-1)}
             className="py-4 bg-surface border border-border rounded-xl text-2xl font-bold active:scale-95 transition-transform select-none">←</button>
           <button onPointerDown={() => changeLane(1)}

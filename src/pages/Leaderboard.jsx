@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import PageWrapper from '../components/UI/PageWrapper'
 import { openMovieModal } from '../components/UI/MovieModal'
 import { useStore } from '../store/useStore'
-import { MOVIES, PLAYERS, PLAYER_COLORS } from '../lib/movies'
+import { MOVIES, PLAYERS, PLAYER_COLORS, getAllMovies } from '../lib/movies'
 import PosterImage from '../components/UI/PosterImage'
 
 const SORTS = [
@@ -26,7 +26,8 @@ function useEloSnapshot(ratings) {
 }
 
 export default function Leaderboard() {
-  const { players, globalRatings } = useStore()
+  const { players, globalRatings, dynamicMovies } = useStore()
+  const allMovies = getAllMovies(dynamicMovies)
   const [filter, setFilter] = useState('global') // 'global' or player name
   const [sort, setSort] = useState('elo')
   const snapshot = useEloSnapshot(globalRatings)
@@ -34,7 +35,7 @@ export default function Leaderboard() {
   // Compute global ratings directly from players if store hasn't populated it yet
   const computedGlobal = React.useMemo(() => {
     const global = {}
-    MOVIES.forEach(m => {
+    allMovies.forEach(m => {
       let eloSum = 0, eloCount = 0, wins = 0, losses = 0, matches = 0
       PLAYERS.forEach(p => {
         const r = players[p]?.ratings?.[m.id]
@@ -49,7 +50,7 @@ export default function Leaderboard() {
   const ratings = filter === 'global' ? effectiveGlobal : (players[filter]?.ratings ?? effectiveGlobal)
 
   const rows = useMemo(() => {
-    return [...MOVIES]
+    return [...allMovies]
       .filter(m => ratings[m.id]?.matches > 0)
       .map(m => {
         const r = ratings[m.id]
@@ -66,7 +67,7 @@ export default function Leaderboard() {
   }, [ratings, sort])
 
   const mostImproved = useMemo(() => {
-    return [...MOVIES]
+    return [...allMovies]
       .filter(m => globalRatings[m.id]?.matches > 0 && snapshot[m.id])
       .map(m => ({ movie: m, gain: (globalRatings[m.id].elo ?? 1000) - (snapshot[m.id] ?? 1000) }))
       .filter(x => x.gain > 0)

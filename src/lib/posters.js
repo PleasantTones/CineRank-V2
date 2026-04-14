@@ -13,12 +13,12 @@ export function getCachedPoster(movieId) {
   return cache[movieId] || null
 }
 
-export async function fetchPoster(movieId) {
+export async function fetchPoster(movieId, imdbIdOverride) {
   if (cache[movieId]) return cache[movieId]
   if (pending[movieId]) return pending[movieId]
 
   const imdbUrl = IMDB_URLS[movieId]
-  const imdbId = imdbUrl?.match(/tt\d+/)?.[0]
+  const imdbId = imdbIdOverride || imdbUrl?.match(/tt\d+/)?.[0]
   if (!imdbId) return null
 
   pending[movieId] = fetch(

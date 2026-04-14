@@ -83,7 +83,7 @@ export default function BoxOfficeSnake({ onEnd }) {
       if (nx === s.food.x && ny === s.food.y) {
         s.score += 100 + s.snake.length * 10
         s.orderIdx++
-        s.tickRate = Math.max(4, s.tickRate - 0.3)
+        s.tickRate = Math.max(4, Math.floor(s.tickRate - 0.5))
         if (s.orderIdx >= s.order.length) { s.active = false; setScore(s.score); setPhase('win'); draw(); return }
         const next = s.order[s.orderIdx]
         let fx, fy
@@ -122,14 +122,14 @@ export default function BoxOfficeSnake({ onEnd }) {
   const swipeRef = useRef(null)
 
   return (
-    <div className="space-y-3">
+    <div className="absolute inset-0 flex flex-col gap-2 p-2">
       {phase === 'playing' && nextTarget && (
         <div className="px-3 py-2 bg-gold/10 border border-gold/20 rounded-xl text-center">
           <span className="text-[10px] text-gold/60 font-semibold uppercase tracking-widest">Next target: </span>
           <span className="text-xs font-bold text-gold truncate">{nextTarget}</span>
         </div>
       )}
-      <div className="relative">
+      <div className="relative flex-1 flex items-center justify-center">
         <canvas ref={canvasRef} className="block rounded-2xl bg-base"
           style={{ touchAction:"none", maxWidth:"100%", maxHeight:"100%", width:"auto", height:"auto", aspectRatio:`${W}/${H}` }}
           onTouchStart={e => { swipeRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY } }}
@@ -172,7 +172,7 @@ export default function BoxOfficeSnake({ onEnd }) {
         )}
       </div>
       {phase === 'playing' && (
-        <div className="grid grid-cols-3 gap-2">
+        <div className="flex-shrink-0 grid grid-cols-3 gap-2">
           <div />
           <button onPointerDown={() => { const c=dirRef.current; if(c.y!==1) dirRef.current={x:0,y:-1} }} className="py-3 bg-surface border border-border rounded-xl text-lg active:scale-95 transition-transform">↑</button>
           <div />

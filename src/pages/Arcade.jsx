@@ -2,10 +2,13 @@ import React, { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import PageWrapper from '../components/UI/PageWrapper'
 import { QuickDraw, MemoryMatch, Scramble } from './ArcadeGames'
-import CinemaRunner from '../components/Arcade/CinemaRunner'
-import PosterCatch from '../components/Arcade/PosterCatch'
+import RottenPinball from '../components/Arcade/RottenPinball'
+import PosterBlaster from '../components/Arcade/PosterBlaster'
 import RottenOrFresh from '../components/Arcade/RottenOrFresh'
+import PosterStorm from '../components/Arcade/PosterStorm'
+import CineBreakout from '../components/Arcade/CineBreakout'
 import BoxOfficeSnake from '../components/Arcade/BoxOfficeSnake'
+import PosterFlip from '../components/Arcade/PosterFlip'
 import { useStore } from '../store/useStore'
 import { PLAYER_COLORS } from '../lib/movies'
 import { sbFetch } from '../lib/supabase'
@@ -14,10 +17,13 @@ const GAMES = [
   { id: 'quickdraw',    icon: '🎯', title: 'Quick Draw',       desc: 'Posters flash on screen — tap them before they vanish. Miss 3 and it\'s game over.', component: QuickDraw },
   { id: 'memory',       icon: '🎭', title: 'Memory Match',     desc: 'Flip cards to find matching poster pairs. 6 pairs, 30 seconds.', component: MemoryMatch },
   { id: 'scramble',     icon: '🔤', title: 'Scrambled Title',  desc: 'Unscramble the movie title before time runs out. 10 rounds.', component: Scramble },
-  { id: 'runner',       icon: '🏃', title: 'Cinema Runner',    desc: 'Dodge movie posters flying down the hallway. Switch lanes to survive.', component: CinemaRunner },
-  { id: 'catch',        icon: '🎪', title: 'Poster Catch',     desc: 'Catch matching posters in your basket. Green border = target.', component: PosterCatch },
+  { id: 'pinball',      icon: '🎰', title: 'Rotten Pinball',   desc: 'Hit movie poster bumpers with your pinball. Don\'t let the ball drain!', component: RottenPinball },
+  { id: 'blaster',      icon: '🚀', title: 'Poster Blaster',   desc: 'Rotate your ship and blast incoming movie posters. Don\'t get hit!', component: PosterBlaster },
   { id: 'rottenorfresh',icon: '🍅', title: 'Rotten or Fresh?', desc: 'Catch the 🍿 popcorn, dodge the 🍅 tomatoes. Move your basket.', component: RottenOrFresh },
   { id: 'snake',        icon: '🐍', title: 'Box Office Snake',  desc: 'Eat movie posters in order. Arrow keys or swipe to steer.', component: BoxOfficeSnake },
+  { id: 'posterflip',   icon: '🧩', title: 'Poster Flip',        desc: 'Slide tiles to reconstruct the movie poster. Fewer moves = more points.', component: PosterFlip },
+  { id: 'storm',        icon: '🌩️', title: 'Poster Storm',       desc: 'Tap top-ranked posters as they fall. Avoid the bad ones!', component: PosterStorm },
+  { id: 'breakout',     icon: '🧱', title: 'Cine Breakout',      desc: 'Smash through movie poster bricks. Classic arcade action.', component: CineBreakout },
 ]
 
 function GameOverlay({ game, onClose }) {
