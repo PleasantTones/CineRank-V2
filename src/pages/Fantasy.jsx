@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import PageWrapper from '../components/UI/PageWrapper'
 import PosterImage from '../components/UI/PosterImage'
+import { openMovieModal } from '../components/UI/MovieModal'
 import { useStore } from '../store/useStore'
 import { MOVIES, PLAYERS, PLAYER_COLORS, getAllMovies } from '../lib/movies'
 import { sbFetch } from '../lib/supabase'
@@ -30,6 +31,7 @@ function getRound(pickIndex, numPlayers) {
 }
 
 // ── Season selector ───────────────────────────────────────────────────────────
+const COMMISSIONER = 'Gabe'  // only the commissioner can start/manage drafts
 const CURRENT_SEASON = '2026-winter'
 const SEASON_LABELS = {
   '2025-winter': '2025 Winter', '2025-summer': '2025 Summer', '2025-fall': '2025 Fall',
@@ -141,6 +143,7 @@ export default function Fantasy() {
   const currentPicker = draftPlayers[currentPickerIdx]
   const isMyTurn = currentPicker === player
   const isDraftComplete = session?.status === 'complete' || currentPickIndex >= TOTAL_PICKS
+  const isCommissioner = player === COMMISSIONER
 
   // Count pick types already used by each player
   function getPlayerPickTypeCounts(playerName) {
@@ -301,20 +304,86 @@ export default function Fantasy() {
     </PageWrapper>
   )
 
-  // ── HOME ──────────────────────────────────────────────────────────────────
+  // ── LOBBY (always the landing page) ─────────────────────────────────────
+  const activePicker = session && !isDraftComplete ? currentPicker : null
+  const draftProgress = session ? `${Math.min(currentPickIndex, TOTAL_PICKS)}/${TOTAL_PICKS} picks` : null
+
   if (view === 'home') return (
     <PageWrapper>
       <div className="p-4 space-y-4">
-        <div className="flex items-center gap-3 pt-1">
-          <div>
-            <h1 className="text-xl font-black text-ink-primary">Fantasy Draft</h1>
-            <p className="text-xs text-ink-muted">Snake draft · 6 picks per player</p>
-          </div>
+        <div className="pt-1">
+          <h1 className="text-xl font-black text-ink-primary">Fantasy Draft</h1>
+          <p className="text-xs text-ink-muted">Snake draft · 6 picks per player · Commissioner: {COMMISSIONER}</p>
         </div>
 
         {error && <div className="bg-red-900/30 border border-red-500/40 rounded-xl p-3 text-xs text-red-300">{error}</div>}
 
-        {/* Rules card */}
+        {/* ── Active Draft Lobby Card ── */}
+        {session && !isDraftComplete ? (
+          <div className="bg-surface border border-gold/30 rounded-2xl overflow-hidden">
+            <div className="px-4 py-3 border-b border-border flex items-center justify-between" style={{ background: 'rgba(200,160,64,0.07)' }}>
+              <div>
+                <p className="text-[10px] font-bold text-gold uppercase tracking-widest">Draft In Progress</p>
+                <p className="text-sm font-black text-ink-primary">{SEASON_LABELS[session.season]}</p>
+              </div>
+              <span className="text-xs text-ink-muted font-mono">{draftProgress}</span>
+            </div>
+            {/* Pick order strip */}
+            <div className="px-4 py-3 flex gap-2 overflow-x-auto no-scrollbar">
+              {draftPlayers.map((p, i) => {
+                const isNow = p === activePicker
+                return (
+                  <div key={p} className={`flex-shrink-0 flex flex-col items-center gap-1 px-3 py-2 rounded-xl border transition-all ${
+                    isNow ? 'border-gold/60 bg-gold/10' : 'border-border bg-raised'
+                  }`}>
+                    <div className="w-2 h-2 rounded-full" style={{ background: PLAYER_COLORS[p] }} />
+                    <p className="text-[10px] font-bold" style={{ color: isNow ? PLAYER_COLORS[p] : '#606060' }}>{p}</p>
+                    <p className="text-[9px] text-ink-muted">{getPlayerPicks(p).length}/6</p>
+                  </div>
+                )
+              })}
+            </div>
+            <div className="px-4 pb-3">
+              {activePicker && (
+                <p className="text-xs text-ink-muted mb-3 text-center">
+                  {activePicker === player
+                    ? <span className="text-gold font-bold">⚡ It's your turn to pick!</span>
+                    : <span>Waiting on <span className="font-bold" style={{ color: PLAYER_COLORS[activePicker] }}>{activePicker}</span>…</span>
+                  }
+                </p>
+              )}
+              <button onClick={() => setView('draft')}
+                className="w-full py-3 bg-gold text-black font-black rounded-xl text-sm">
+                {activePicker === player ? '🎯 Pick Now →' : '👀 Watch Draft →'}
+              </button>
+            </div>
+          </div>
+        ) : isDraftComplete ? (
+          <div className="bg-surface border border-border rounded-2xl p-4 text-center space-y-3">
+            <p className="text-sm font-bold text-ink-primary">✅ Draft Complete — {SEASON_LABELS[session?.season]}</p>
+            <button onClick={() => setView('slate')}
+              className="w-full py-3 bg-gold text-black font-black rounded-xl text-sm">View Slates →</button>
+          </div>
+        ) : (
+          <div className="bg-surface border border-border rounded-2xl p-4 text-center space-y-2">
+            <p className="text-2xl">🎬</p>
+            <p className="text-sm font-bold text-ink-primary">No active draft</p>
+            {isCommissioner
+              ? <p className="text-xs text-ink-muted">Start a draft below to get everyone in.</p>
+              : <p className="text-xs text-ink-muted">Waiting for <span className="font-bold text-gold">{COMMISSIONER}</span> to start the draft.</p>
+            }
+          </div>
+        )}
+
+        {/* ── Commissioner controls ── */}
+        {isCommissioner && !session && (
+          <button onClick={() => setView('setup')}
+            className="w-full py-4 bg-gold text-black font-black rounded-2xl text-base">
+            🎬 Start New Draft
+          </button>
+        )}
+
+        {/* ── How it works ── */}
         <div className="bg-surface border border-border rounded-2xl p-4 space-y-2">
           <p className="text-xs font-bold text-ink-muted uppercase tracking-widest mb-3">How it works</p>
           <div className="flex items-start gap-2">
@@ -334,13 +403,7 @@ export default function Fantasy() {
           </div>
         </div>
 
-        {/* Start new draft */}
-        <button onClick={() => setView('setup')}
-          className="w-full py-4 bg-gold text-black font-black rounded-2xl text-base">
-          🎬 Start New Draft
-        </button>
-
-        {/* Past drafts */}
+        {/* ── Past drafts ── */}
         {pastDrafts.length > 0 && (
           <div className="space-y-2">
             <p className="text-xs font-bold text-ink-muted uppercase tracking-widest">Past Drafts</p>
@@ -360,11 +423,16 @@ export default function Fantasy() {
   )
 
   // ── SETUP ─────────────────────────────────────────────────────────────────
+  // Guard: only commissioner can access setup
+  if (view === 'setup' && !isCommissioner) {
+    setView('home')
+    return null
+  }
   if (view === 'setup') return (
     <PageWrapper>
       <div className="p-4 space-y-4">
         <div className="flex items-center gap-3">
-          <button onClick={() => setView('home')} className="text-ink-muted text-sm py-2 pr-3">← Back</button>
+          <button onClick={() => setView('home')} className="text-ink-muted text-sm py-2 pr-3">← Lobby</button>
           <h2 className="text-lg font-black">New Draft</h2>
         </div>
         {error && <div className="bg-red-900/30 border border-red-500/40 rounded-xl p-3 text-xs text-red-300">{error}</div>}
@@ -435,6 +503,12 @@ export default function Fantasy() {
     return (
       <PageWrapper>
         <div className="p-3 space-y-3">
+          {/* Back to lobby */}
+          <button onClick={() => setView('home')}
+            className="flex items-center gap-1 text-xs text-ink-muted py-1 hover:text-ink-primary transition-colors">
+            ← Lobby
+          </button>
+
           {error && <div className="bg-red-900/30 border border-red-500/40 rounded-xl p-2 text-xs text-red-300">{error}</div>}
 
           {/* Draft status bar */}
@@ -572,20 +646,30 @@ export default function Fantasy() {
                 </div>
               )}
               {selectedPickType && <div className="grid grid-cols-4 gap-2 max-h-64 overflow-y-auto">
-                {availableMovies.map(movie => (
-                  <button key={movie.id}
-                    onClick={() => setSelectedMovie(movie)}
-                    className={`flex flex-col items-center gap-1 transition-all ${
-                      selectedMovie?.id === movie.id ? 'scale-95 opacity-100' : 'opacity-80 hover:opacity-100'
+                {availableMovies.map(movie => {
+                  const isSelected = selectedMovie?.id === movie.id
+                  return (
+                    <div key={movie.id} className={`flex flex-col items-center gap-1 transition-all ${
+                      isSelected ? 'scale-95 opacity-100' : 'opacity-80 hover:opacity-100'
                     }`}>
-                    <div className={`relative rounded-lg overflow-hidden border-2 transition-all ${
-                      selectedMovie?.id === movie.id ? 'border-gold' : 'border-transparent'
-                    }`}>
-                      <PosterImage movieId={movie.id} fallbackSrc={movie?.img} className="w-16 h-24 object-cover" />
+                      <div className={`relative rounded-lg overflow-hidden border-2 transition-all ${
+                        isSelected ? 'border-gold' : 'border-transparent'
+                      }`}
+                        onClick={() => setSelectedMovie(movie)}
+                        style={{ cursor: 'pointer' }}
+                      >
+                        <PosterImage movieId={movie.id} fallbackSrc={movie?.img} className="w-16 h-24 object-cover" />
+                        {/* Info button overlay */}
+                        <button
+                          onClick={e => { e.stopPropagation(); openMovieModal(movie.id) }}
+                          className="absolute top-1 right-1 w-5 h-5 rounded-full bg-black/70 flex items-center justify-center text-[9px] text-white font-bold hover:bg-black/90 transition-colors"
+                          style={{ lineHeight: 1 }}
+                        >ℹ</button>
+                      </div>
+                      <p className="text-[9px] text-center text-ink-muted leading-tight line-clamp-2 w-16">{movie.title}</p>
                     </div>
-                    <p className="text-[9px] text-center text-ink-muted leading-tight line-clamp-2 w-16">{movie.title}</p>
-                  </button>
-                ))}
+                  )
+                })}
               </div>
 
               }
@@ -609,7 +693,8 @@ export default function Fantasy() {
               <p className="text-[10px] font-bold text-ink-muted uppercase tracking-widest mb-2">All Available ({availableMovies.length})</p>
               <div className="grid grid-cols-5 gap-1.5 max-h-48 overflow-y-auto">
                 {availableMovies.slice(0, 25).map(movie => (
-                  <div key={movie.id} className="flex flex-col items-center gap-0.5 opacity-50">
+                  <div key={movie.id} className="flex flex-col items-center gap-0.5 opacity-60 cursor-pointer hover:opacity-90 transition-opacity"
+                    onClick={() => openMovieModal(movie.id)}>
                     <PosterImage movieId={movie.id} fallbackSrc={movie?.img} className="w-12 h-16 object-cover rounded-lg" />
                     <p className="text-[8px] text-center text-ink-muted leading-tight line-clamp-1 w-12">{movie.title}</p>
                   </div>
@@ -729,7 +814,8 @@ export default function Fantasy() {
                           {movie ? (
                             <div className="flex items-center gap-2">
                               <PosterImage movieId={pick.movie_id} fallbackSrc={movie?.img}
-                                className="w-10 h-14 object-cover rounded-lg flex-shrink-0" />
+                                className="w-10 h-14 object-cover rounded-lg flex-shrink-0 cursor-pointer"
+                                onClick={() => openMovieModal(pick.movie_id)} />
                               <p className="text-xs text-ink-primary font-semibold leading-tight">{movie.title}</p>
                             </div>
                           ) : (
