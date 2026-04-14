@@ -95,11 +95,13 @@ export default function Fantasy() {
   }, [])
 
   // Auto-load scoring when draft is complete
+  // Use session?.status in deps (state var) instead of isDraftComplete (computed after effects)
   useEffect(() => {
-    if (isDraftComplete && picks.length > 0 && Object.keys(financials).length === 0 && getTMDBKey()) {
+    const complete = session?.status === 'complete' || (session && (session.current_pick_index ?? 0) >= TOTAL_PICKS)
+    if (complete && picks.length > 0 && Object.keys(financials).length === 0 && getTMDBKey()) {
       loadScoring(picks, allMovies)
     }
-  }, [isDraftComplete, picks.length])
+  }, [session?.status, session?.current_pick_index, picks.length])
 
   // Reset timer whenever the current pick index changes
   useEffect(() => {

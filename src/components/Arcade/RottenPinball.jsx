@@ -42,11 +42,20 @@ function ballSegCollide(ball, x1, y1, x2, y2, isActive) {
   }
 }
 
-function getFlipper(pivot, angle, side) {
+// Left flipper: pivot on left, extends RIGHT, tilts up when active
+function getLeftFlipper(angle) {
   return {
-    x1: pivot.x, y1: pivot.y,
-    x2: pivot.x + Math.cos(angle*side)*FLIPPER_LEN,
-    y2: pivot.y + Math.sin(Math.abs(angle))*(angle<0?-1:1)*FLIPPER_LEN
+    x1: LEFT_PIVOT.x, y1: LEFT_PIVOT.y,
+    x2: LEFT_PIVOT.x + Math.cos(angle) * FLIPPER_LEN,
+    y2: LEFT_PIVOT.y + Math.sin(angle) * FLIPPER_LEN,
+  }
+}
+// Right flipper: pivot on right, extends LEFT, tilts up when active
+function getRightFlipper(angle) {
+  return {
+    x1: RIGHT_PIVOT.x, y1: RIGHT_PIVOT.y,
+    x2: RIGHT_PIVOT.x - Math.cos(angle) * FLIPPER_LEN,
+    y2: RIGHT_PIVOT.y + Math.sin(angle) * FLIPPER_LEN,
   }
 }
 
@@ -122,8 +131,8 @@ export default function RottenPinball({ onEnd }) {
         s.bumperFlash = s.bumperFlash.map(f => Math.max(0, f-1))
 
         // Flippers
-        const lf = getFlipper(LEFT_PIVOT, s.lAngle, 1)
-        const rf = getFlipper(RIGHT_PIVOT, -s.rAngle, -1)
+        const lf = getLeftFlipper(s.lAngle)
+        const rf = getRightFlipper(s.rAngle)
         ballSegCollide(b, lf.x1, lf.y1, lf.x2, lf.y2, s.lActive)
         ballSegCollide(b, rf.x1, rf.y1, rf.x2, rf.y2, s.rActive)
 
@@ -235,8 +244,8 @@ export default function RottenPinball({ onEnd }) {
         ctx.beginPath(); ctx.arc(f.x1, f.y1, 7, 0, Math.PI*2)
         ctx.fillStyle = active ? '#FFD700' : '#a08030'; ctx.fill()
       }
-      const lf = getFlipper(LEFT_PIVOT, s.lAngle, 1)
-      const rf = getFlipper(RIGHT_PIVOT, -s.rAngle, -1)
+      const lf = getLeftFlipper(s.lAngle)
+      const rf = getRightFlipper(s.rAngle)
       drawFlipper(lf, s.lActive)
       drawFlipper(rf, s.rActive)
 
