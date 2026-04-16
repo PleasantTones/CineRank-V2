@@ -5,7 +5,7 @@ import { MOVIES, IMDB_URLS, getAllMovies, getImdbUrl } from '../../lib/movies'
 import { fetchTMDBFinancials, formatMoney, calcProfit, getTMDBKey } from '../../lib/tmdb'
 import PosterImage from './PosterImage'
 
-const OMDB_KEY = 'd749e3a3'
+function getOmdbKey() { return localStorage.getItem('omdb_key') || 'a25da7ab' }  // user key or fallback
 const cache = {}  // keyed by imdbId or tmdbId — never by movieId (gets reused on clear/reload)
 
 let openFn = null
@@ -40,7 +40,7 @@ export default function MovieModal() {
     // Only fetch OMDB if we have an exact IMDB ID — never title search (returns wrong movies)
     if (!imdbId) { setLoading(false); return }
     setLoading(true)
-    fetch(`https://www.omdbapi.com/?apikey=${OMDB_KEY}&i=${imdbId}&plot=short`)
+    fetch(`https://www.omdbapi.com/?apikey=${getOmdbKey()}&i=${imdbId}&plot=short`)
       .then(r => r.json())
       .then(d => { if (d.Response === 'True') { cache[omdbCacheKey] = d; setOmdb(d) } })
       .catch(() => {})
@@ -187,7 +187,11 @@ export default function MovieModal() {
                 </div>
                 {tmdb && tmdb.budget === 0 && tmdb.revenue === 0 && !tmdbLoading && (
                   <div className="px-4 py-3 border-t border-border text-center">
-                    <p className="text-[11px] text-ink-muted">Budget data not yet available on TMDB</p>
+                    <p className="text-[11px] text-ink-muted">
+                      {tmdb.status === 'Released'
+                        ? 'Box office figures not yet in database — check back after opening weekend'
+                        : `No financial data yet · ${tmdb.status || 'Upcoming'}`}
+                    </p>
                   </div>
                 )}
                 {tmdb && (tmdb.budget > 0 || tmdb.revenue > 0) && (

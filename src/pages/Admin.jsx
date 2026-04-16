@@ -67,6 +67,8 @@ export default function Admin() {
   const navigate = useNavigate()
   const [apiKey, setApiKey]       = useState(localStorage.getItem('tmdb_key') || '')
   const [keyInput, setKeyInput]   = useState(localStorage.getItem('tmdb_key') || '')
+  const [omdbKey, setOmdbKey]     = useState(localStorage.getItem('omdb_key') || '')
+  const [omdbInput, setOmdbInput] = useState(localStorage.getItem('omdb_key') || '')
   const [season, setSeason]       = useState('2026-winter')
   const [tmdbMovies, setTmdbMovies] = useState([])
   const [seasonMovies, setSeasonMovies] = useState([])
@@ -315,6 +317,20 @@ ALTER TABLE season_movies ADD COLUMN IF NOT EXISTS poster_path TEXT;`}</pre>
             <button onClick={saveKey} className="px-4 py-2 bg-gold text-black font-bold rounded-xl text-sm">Save</button>
           </div>
           {apiKey && <p className="text-[10px] text-win mt-1">✓ Key saved</p>}
+        </div>
+
+        {/* OMDB API Key */}
+        <div className="bg-surface border border-border rounded-2xl p-4">
+          <p className="text-xs font-bold text-ink-muted uppercase tracking-widest mb-1">OMDB API Key <span className="text-[10px] font-normal normal-case">(optional — for richer box office data)</span></p>
+          <p className="text-[11px] text-ink-muted mb-2">Free at <a href="https://www.omdbapi.com/apikey.aspx" target="_blank" className="text-gold underline">omdbapi.com</a> — adds domestic US box office & more metadata</p>
+          <div className="flex gap-2">
+            <input value={omdbInput} onChange={e => setOmdbInput(e.target.value)}
+              placeholder="Paste your OMDB API key"
+              className="flex-1 bg-raised border border-border rounded-xl px-3 py-2 text-sm font-mono text-ink-secondary focus:outline-none focus:border-gold" />
+            <button onClick={() => { localStorage.setItem('omdb_key', omdbInput); setOmdbKey(omdbInput) }}
+              className="px-4 py-2 bg-gold text-black font-bold rounded-xl text-sm">Save</button>
+          </div>
+          {omdbKey && <p className="text-[10px] text-win mt-1">✓ Key saved</p>}
         </div>
 
         {/* Season selector */}

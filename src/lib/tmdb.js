@@ -72,8 +72,26 @@ export async function fetchTMDBFinancials(movie) {
     if (d.status_message) return null  // API error
 
     // TMDB budget/revenue: 0 = unknown, values < $100k are community data errors
-    const budget  = (d.budget  && d.budget  >= 100_000) ? d.budget  : 0
-    const revenue = (d.revenue && d.revenue >= 100_000) ? d.revenue : 0
+    let budget  = (d.budget  && d.budget  >= 100_000) ? d.budget  : 0
+    let revenue = (d.revenue && d.revenue >= 100_000) ? d.revenue : 0
+
+    // If TMDB has no data and we have an IMDB ID, try OMDB for BoxOffice field
+    if (revenue === 0 && d.imdb_id) {
+      try {
+        const omdbKey = localStorage.getItem('omdb_key') || 'a25da7ab'
+        const omdbRes = await fetch(`https://www.omdbapi.com/?apikey=${omdbKey}&i=${d.imdb_id}&plot=short`)
+        const omdb = await omdbRes.json()
+        if (omdb.Response === 'True') {
+          // OMDB BoxOffice is domestic US gross e.g. "$142,123,456"
+          if (omdb.BoxOffice && omdb.BoxOffice !== 'N/A') {
+            const domestic = parseInt(omdb.BoxOffice.replace(/[$,]/g, ''))
+            if (domestic > 100_000) revenue = domestic
+          }
+          // OMDB doesn't have budget — only use for revenue
+        }
+      } catch {}
+    }
+
     const profit  = calcProfit(budget, revenue)
 
     const result = {
