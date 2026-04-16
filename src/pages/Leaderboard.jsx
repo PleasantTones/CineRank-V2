@@ -14,13 +14,18 @@ const SORTS = [
 ]
 
 function useEloSnapshot(ratings, movies) {
+  const today = new Date().toDateString()
+  const key = 'cinerank_lb_snapshot_' + today
   const [snapshot] = useState(() => {
-    try { return JSON.parse(localStorage.getItem('cinerank_lb_snapshot') || '{}') } catch { return {} }
+    try { return JSON.parse(localStorage.getItem(key) || '{}') } catch { return {} }
   })
   useMemo(() => {
-    const snap = {}
-    movies.forEach(m => { snap[m.id] = ratings[m.id]?.elo ?? 1000 })
-    localStorage.setItem('cinerank_lb_snapshot', JSON.stringify(snap))
+    // Only save snapshot once per day so trends show intra-day movement
+    if (!localStorage.getItem(key)) {
+      const snap = {}
+      movies.forEach(m => { snap[m.id] = ratings[m.id]?.elo ?? 1000 })
+      localStorage.setItem(key, JSON.stringify(snap))
+    }
   }, [movies.length])
   return snapshot
 }

@@ -129,7 +129,8 @@ export default function Fantasy() {
       setTimeLeft(prev => {
         if (prev <= 1) {
           clearInterval(timerRef.current)
-          autoPickRef.current?.()
+          // Only auto-pick on the current picker's client, not all 5
+          if (autoPickRef._isMyTurn) autoPickRef.current?.()
           return 0
         }
         return prev - 1
@@ -138,19 +139,19 @@ export default function Fantasy() {
     return () => clearInterval(timerRef.current)
   }, [view, session?.current_pick_index])
 
-  // Poll for updates when draft is active
+  // Poll from ANY view whenever a session exists — so lobby and draft both stay live
   useEffect(() => {
-    if (view !== 'draft' || !session) return
-    pollRef.current = setInterval(async () => {
-      try {
-        const s = await sbFetch(`/rest/v1/draft_sessions?id=eq.${session.id}&limit=1`)
-        const p = await sbFetch(`/rest/v1/draft_picks?session_id=eq.${session.id}&order=pick_index.asc`)
-        if (s?.[0]) setSession(s[0])
-        if (p) setPicks(p)
-      } catch {}
-    }, 4000)
-    return () => clearInterval(pollRef.current)
-  }, [view, session?.current_pick_index])
+    if (!session?.id) return
+    // Poll every 2 seconds using loadSession so all derived state updates atomically
+    pollRef.current = setInterval(() => { loadSession() }, 2000)
+    // Also poll immediately when user returns to the tab
+    const onVisible = () => { if (document.visibilityState === 'visible') loadSession() }
+    document.addEventListener('visibilitychange', onVisible)
+    return () => {
+      clearInterval(pollRef.current)
+      document.removeEventListener('visibilitychange', onVisible)
+    }
+  }, [session?.id, loadSession])
 
   // ── Draft state derivations ───────────────────────────────────────────────
   // draft_order is JSONB — Supabase returns it as a JS array directly (no JSON.parse needed)
@@ -162,6 +163,7 @@ export default function Fantasy() {
   const currentPickerIdx = getPickerIndex(currentPickIndex, draftPlayers.length)
   const currentPicker = draftPlayers[currentPickerIdx]
   const isMyTurn = currentPicker === player
+  autoPickRef._isMyTurn = isMyTurn  // let timer know if this client should auto-pick
   const isDraftComplete = session?.status === 'complete' || currentPickIndex >= TOTAL_PICKS
   const isCommissioner = player === COMMISSIONER
 
@@ -308,6 +310,9 @@ export default function Fantasy() {
       setSelectedMovie(null)
       setSelectedPickType(null)
       await loadSession()
+      // Immediately trigger a poll so other clients see the update ASAP
+      // (they're polling every 2s but this closes the gap for the picker themselves)
+      clearInterval(pollRef.current)
     } catch(e) {
       setError('Pick failed: ' + e.message)
     }

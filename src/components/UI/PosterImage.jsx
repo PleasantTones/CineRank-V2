@@ -1,23 +1,30 @@
 import React, { useState, useEffect } from 'react'
 import { getCachedPoster, fetchPoster } from '../../lib/posters'
 
-// Smart poster component: shows base64 immediately, upgrades to sharp OMDB image
+// Smart poster component
+// Priority for dynamic movies: stored TMDB CDN URL (fallbackSrc) → fresh fetch
+// Priority for hardcoded movies: localStorage cache → fresh OMDB/TMDB fetch
 export default function PosterImage({ movieId, imdbId, tmdbId, fallbackSrc, alt, className, style, onClick }) {
-  const [src, setSrc] = useState(() => getCachedPoster(movieId) || fallbackSrc)
+  const isTMDBUrl = fallbackSrc?.includes('image.tmdb.org')
+
+  const [src, setSrc] = useState(() => {
+    if (isTMDBUrl) return fallbackSrc
+    return getCachedPoster(movieId, tmdbId) || fallbackSrc
+  })
   const [loaded, setLoaded] = useState(false)
 
   useEffect(() => {
     let cancelled = false
-    const cached = getCachedPoster(movieId)
-    if (cached) {
-      setSrc(cached)
-      return
-    }
+    // If we already have a valid TMDB CDN URL, trust it — don't fetch
+    if (isTMDBUrl) { setSrc(fallbackSrc); return }
+    // Otherwise fetch fresh
+    const cached = getCachedPoster(movieId, tmdbId)
+    if (cached) { setSrc(cached); return }
     fetchPoster(movieId, imdbId, tmdbId).then(url => {
       if (!cancelled && url) setSrc(url)
     })
     return () => { cancelled = true }
-  }, [movieId])
+  }, [movieId, imdbId, tmdbId, fallbackSrc])
 
   return (
     <img
@@ -32,7 +39,7 @@ export default function PosterImage({ movieId, imdbId, tmdbId, fallbackSrc, alt,
       }}
       onClick={onClick}
       onLoad={() => setLoaded(true)}
-      onError={() => setSrc(fallbackSrc)}
+      onError={() => { if (src !== fallbackSrc) setSrc(fallbackSrc) }}
       draggable={false}
     />
   )

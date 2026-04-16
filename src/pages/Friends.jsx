@@ -10,8 +10,8 @@ import PosterImage from '../components/UI/PosterImage'
 function getCompat(ratA, ratB, movies) {
   const both = movies.filter(m => ratA[m.id]?.matches > 0 && ratB[m.id]?.matches > 0)
   if (both.length < 3) return null
-  const rankA = [...both].sort((a,b) => (ratB[b.id]?.elo||1000) - (ratB[a.id]?.elo||1000)).map(m => m.id)
-  const rankB = [...both].sort((a,b) => (ratA[b.id]?.elo||1000) - (ratA[a.id]?.elo||1000)).map(m => m.id)
+  const rankA = [...both].sort((a,b) => (ratA[b.id]?.elo||1000) - (ratA[a.id]?.elo||1000)).map(m => m.id)
+  const rankB = [...both].sort((a,b) => (ratB[b.id]?.elo||1000) - (ratB[a.id]?.elo||1000)).map(m => m.id)
   const diffs = rankA.map((id, i) => Math.abs(i - rankB.indexOf(id)))
   const avg = diffs.reduce((a,b) => a+b, 0) / diffs.length
   return Math.round((1 - avg / (both.length - 1)) * 100)

@@ -96,6 +96,8 @@ export default function App() {
           const seasonMovies = await sbFetch('/rest/v1/season_movies?select=*&order=added_at.asc') || []
           useStore.getState().loadDynamicMovies(seasonMovies)
           console.log('[CineRank] Loaded', seasonMovies.length, 'season movies')
+          // Prefetch posters for dynamic movies (TMDB CDN URLs from stored poster_path)
+          setTimeout(() => prefetchPosters(seasonMovies.map(m => m.id)), 1000)
         } catch(e) { console.warn('[CineRank] No season_movies table yet') }
       } catch(e) {
         console.error('[CineRank] Load error:', e)
@@ -106,7 +108,7 @@ export default function App() {
     // Show UI immediately from localStorage, then sync DB
     setDbLoaded(true)
     load()
-    // Background-fetch sharp OMDB poster URLs (first 20 most-used movies first)
+    // Background-fetch poster URLs for hardcoded movies
     prefetchPosters(MOVIES.slice(0, 20).map(m => m.id))
     setTimeout(() => prefetchPosters(MOVIES.slice(20).map(m => m.id)), 3000)
   }, [])

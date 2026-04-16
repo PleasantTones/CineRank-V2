@@ -190,7 +190,17 @@ export default function CineBreakout({ onEnd }) {
       const pGrad=ctx.createLinearGradient(s.paddleX-PADDLE_W/2,paddleY,s.paddleX+PADDLE_W/2,paddleY)
       pGrad.addColorStop(0,'rgba(200,160,64,0.4)'); pGrad.addColorStop(0.5,'rgba(200,160,64,1)'); pGrad.addColorStop(1,'rgba(200,160,64,0.4)')
       ctx.fillStyle=pGrad; ctx.beginPath()
-      ctx.roundRect(s.paddleX-PADDLE_W/2,paddleY,PADDLE_W,PADDLE_H,6); ctx.fill()
+      // Use arc-based rounded rect (Safari compat — roundRect not available < 15.4)
+      const rx=6, px2=s.paddleX-PADDLE_W/2
+      ctx.beginPath(); ctx.moveTo(px2+rx,paddleY); ctx.lineTo(px2+PADDLE_W-rx,paddleY)
+      ctx.arcTo(px2+PADDLE_W,paddleY,px2+PADDLE_W,paddleY+PADDLE_H,rx)
+      ctx.lineTo(px2+PADDLE_W,paddleY+PADDLE_H-rx)
+      ctx.arcTo(px2+PADDLE_W,paddleY+PADDLE_H,px2+PADDLE_W-rx,paddleY+PADDLE_H,rx)
+      ctx.lineTo(px2+rx,paddleY+PADDLE_H)
+      ctx.arcTo(px2,paddleY+PADDLE_H,px2,paddleY+PADDLE_H-rx,rx)
+      ctx.lineTo(px2,paddleY+rx)
+      ctx.arcTo(px2,paddleY,px2+rx,paddleY,rx)
+      ctx.closePath(); ctx.fill()
 
       // Ball
       const ballGrad=ctx.createRadialGradient(b.x-2,b.y-2,2,b.x,b.y,BALL_R)

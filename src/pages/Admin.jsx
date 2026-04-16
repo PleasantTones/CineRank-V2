@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react'
+import React, { useState, useEffect, useCallback, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { sbFetch } from '../lib/supabase'
 import { MOVIES } from '../lib/movies'
@@ -79,6 +79,7 @@ export default function Admin() {
   const [searching, setSearching] = useState(false)
   const [bulkLoading, setBulkLoading] = useState(false)
   const [bulkProgress, setBulkProgress] = useState('')
+  const cancelBulkRef = useRef(false)
 
   const loadSeasonMovies = useCallback(async () => {
     try {
@@ -137,6 +138,7 @@ export default function Admin() {
     if (!apiKey) { setError('Save your TMDB API key first.'); return }
     const dates = SEASON_DATES[season]
     if (!dates) return
+    cancelBulkRef.current = false
     setBulkLoading(true); setBulkProgress('Fetching movies from TMDB…'); setError('')
 
     try {
@@ -144,13 +146,15 @@ export default function Admin() {
       let allMovies = [], pg = 1, totalPg = 1
       while (pg <= totalPg && pg <= 10) {
         setBulkProgress(`Fetching page ${pg}${totalPg > 1 ? ` of ${totalPg}` : ''}…`)
-        const seasonYear = dates.start.slice(0, 4)
         const res = await fetch(
-          `${TMDB_BASE}/discover/movie?api_key=${apiKey}&language=en-US&region=US` +
+          `${TMDB_BASE}/discover/movie?api_key=${apiKey}` +
+          `&language=en-US` +
+          `&region=US` +
           `&with_release_type=3` +
-          `&primary_release_year=${seasonYear}` +   // blocks ALL re-releases
-          `&release_date.gte=${dates.start}&release_date.lte=${dates.end}` +  // US-specific window
-          `&sort_by=release_date.asc&page=${pg}`
+          `&release_date.gte=${dates.start}` +
+          `&release_date.lte=${dates.end}` +
+          `&with_runtime.gte=70` +
+          `&sort_by=popularity.desc&page=${pg}`
         )
         const data = await res.json()
         if (data.status_message) throw new Error(data.status_message)
@@ -159,13 +163,15 @@ export default function Admin() {
         pg++
       }
 
-      // Strict date + year filter
+      // Filter: date in season window, release YEAR matches season year (blocks re-releases like Shrek 2001),
+      // and popularity > 1 to exclude zero-traction junk
       const seasonYear = dates.start.slice(0, 4)
       const inRange = allMovies.filter(m =>
         m.release_date &&
         m.release_date >= dates.start &&
         m.release_date <= dates.end &&
-        m.release_date.slice(0, 4) === seasonYear
+        m.release_date.slice(0, 4) === seasonYear &&  // year must match — blocks Shrek, Top Gun re-releases
+        m.popularity > 1.0
       )
 
       // Skip already-added movies (by tmdb_id)
@@ -189,6 +195,12 @@ export default function Admin() {
       let added = 0
       for (const m of toAdd) {
         added++
+        if (cancelBulkRef.current) {
+          setBulkProgress(`⚠️ Cancelled after ${added-1} movies`)
+          setBulkLoading(false)
+          await loadSeasonMovies()
+          return
+        }
         setBulkProgress(`Adding ${added}/${toAdd.length}: ${m.title}`)
         const imdbId = await getImdbId(m.id)
         const newId = nextId(usedIds)
@@ -285,6 +297,7 @@ export default function Admin() {
 ALTER TABLE season_movies ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "r" ON season_movies FOR SELECT USING (true);
 CREATE POLICY "w" ON season_movies FOR INSERT WITH CHECK (true);
+CREATE POLICY "u" ON season_movies FOR UPDATE USING (true);
 CREATE POLICY "d" ON season_movies FOR DELETE USING (true);
 
 -- If table already exists, add poster_path column:
@@ -318,10 +331,18 @@ ALTER TABLE season_movies ADD COLUMN IF NOT EXISTS poster_path TEXT;`}</pre>
           <div className="bg-surface border border-border rounded-2xl p-4">
             <p className="text-xs font-bold text-ink-muted uppercase tracking-widest mb-1">Auto-Load Season</p>
             <p className="text-[11px] text-ink-muted mb-3">Pulls all wide US theatrical releases for the selected season and adds them automatically.</p>
-            <button onClick={bulkLoadSeason} disabled={bulkLoading}
-              className="w-full py-3 bg-gold text-black font-black rounded-xl text-sm disabled:opacity-50">
-              {bulkLoading ? '⏳ Loading…' : '⚡ Auto-Load All Season Movies'}
-            </button>
+            <div className="flex gap-2">
+              <button onClick={bulkLoadSeason} disabled={bulkLoading}
+                className="flex-1 py-3 bg-gold text-black font-black rounded-xl text-sm disabled:opacity-50">
+                {bulkLoading ? '⏳ Loading…' : '⚡ Auto-Load All Season Movies'}
+              </button>
+              {bulkLoading && (
+                <button onClick={() => { cancelBulkRef.current = true }}
+                  className="px-4 py-3 bg-red-900/30 border border-red-500/40 text-red-400 font-bold rounded-xl text-sm hover:bg-red-900/50">
+                  ✕ Cancel
+                </button>
+              )}
+            </div>
             {bulkProgress && (
               <p className={`text-[11px] mt-2 text-center font-medium ${bulkProgress.startsWith('✅') ? 'text-win' : 'text-gold'}`}>
                 {bulkProgress}

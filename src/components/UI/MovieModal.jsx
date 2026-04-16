@@ -6,7 +6,7 @@ import { fetchTMDBFinancials, formatMoney, calcProfit, getTMDBKey } from '../../
 import PosterImage from './PosterImage'
 
 const OMDB_KEY = 'd749e3a3'
-const cache = {}
+const cache = {}  // keyed by imdbId or tmdbId — never by movieId (gets reused on clear/reload)
 
 let openFn = null
 export function openMovieModal(movieId) { if (openFn) openFn(movieId) }
@@ -34,15 +34,15 @@ export default function MovieModal() {
 
   useEffect(() => {
     if (!movie) return
-    if (cache[movie.id]) { setOmdb(cache[movie.id]); return }
-    setLoading(true)
+    const omdbCacheKey = movie.imdbId || movie.tmdbId || movie.id
+    if (cache[omdbCacheKey]) { setOmdb(cache[omdbCacheKey]); return }
     const imdbId = imdbUrl?.match(/tt\d+/)?.[0]
-    const url = imdbId
-      ? `https://www.omdbapi.com/?apikey=${OMDB_KEY}&i=${imdbId}&plot=short`
-      : `https://www.omdbapi.com/?apikey=${OMDB_KEY}&t=${encodeURIComponent(movie.title)}&type=movie`
-    fetch(url)
+    // Only fetch OMDB if we have an exact IMDB ID — never title search (returns wrong movies)
+    if (!imdbId) { setLoading(false); return }
+    setLoading(true)
+    fetch(`https://www.omdbapi.com/?apikey=${OMDB_KEY}&i=${imdbId}&plot=short`)
       .then(r => r.json())
-      .then(d => { if (d.Response === 'True') { cache[movie.id] = d; setOmdb(d) } })
+      .then(d => { if (d.Response === 'True') { cache[omdbCacheKey] = d; setOmdb(d) } })
       .catch(() => {})
       .finally(() => setLoading(false))
   }, [movie?.id])
@@ -50,8 +50,8 @@ export default function MovieModal() {
   // Fetch TMDB financials
   useEffect(() => {
     if (!movie) { setTmdb(null); return }
-    if (!getTMDBKey()) return
     setTmdbLoading(true)
+    if (!getTMDBKey()) { setTmdbLoading(false); return }
     fetchTMDBFinancials(movie)
       .then(d => setTmdb(d))
       .catch(() => {})
@@ -60,7 +60,11 @@ export default function MovieModal() {
 
   const imdbRating = omdb?.imdbRating && omdb.imdbRating !== 'N/A' ? omdb.imdbRating : null
   const rtRating = omdb?.Ratings?.find(r => r.Source === 'Rotten Tomatoes')?.Value
-  const poster = omdb?.Poster && omdb.Poster !== 'N/A' ? omdb.Poster : movie?.img
+  // Dynamic movies have poster_path stored in Supabase → always use TMDB CDN URL
+  // Hardcoded movies use OMDB poster as it's more reliable for them
+  const poster = movie?.dynamic
+    ? (movie.img || null)  // TMDB CDN URL from Supabase — never let OMDB override this
+    : (omdb?.Poster && omdb.Poster !== 'N/A' ? omdb.Poster : movie?.img)
 
   return (
     <AnimatePresence>
@@ -174,7 +178,8 @@ export default function MovieModal() {
             </div>
 
             {/* Box Office / Financials */}
-            {(tmdb || tmdbLoading) && (
+            {/* Always show box office — loading state while fetching */}
+            {(
               <div className="rounded-xl overflow-hidden border border-border">
                 <div className="px-4 py-2.5 flex items-center justify-between" style={{ background: '#111113' }}>
                   <p className="text-[10px] font-bold text-ink-muted uppercase tracking-widest">Box Office</p>

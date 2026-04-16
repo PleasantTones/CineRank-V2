@@ -8,7 +8,13 @@ const SESSION_CACHE_KEY = 'cinerank_tmdb_financials'
 let memCache = {}
 try {
   const stored = sessionStorage.getItem(SESSION_CACHE_KEY)
-  if (stored) memCache = JSON.parse(stored)
+  if (stored) {
+    const parsed = JSON.parse(stored)
+    // Filter out cached entries with no real data so they re-fetch
+    Object.entries(parsed).forEach(([k, v]) => {
+      if (v && (v.budget > 0 || v.revenue > 0 || v.status)) memCache[k] = v
+    })
+  }
 } catch {}
 
 function persistCache() {
@@ -39,7 +45,7 @@ export async function fetchTMDBFinancials(movie) {
   const key = getTMDBKey()
   if (!key) return null
 
-  const cacheKey = movie.id || movie.tmdbId
+  const cacheKey = movie.tmdbId || movie.imdbId || movie.id  // prefer stable TMDB/IMDB IDs over internal M00XX
   if (memCache[cacheKey]) return memCache[cacheKey]
 
   try {
@@ -87,8 +93,11 @@ export async function fetchTMDBFinancials(movie) {
       posterPath:   d.poster_path,
     }
 
-    memCache[cacheKey] = result
-    persistCache()
+    // Only cache if we got real data — don't cache empty results so they retry
+    if (result && (result.budget > 0 || result.revenue > 0 || result.status)) {
+      memCache[cacheKey] = result
+      persistCache()
+    }
     return result
   } catch {
     return null

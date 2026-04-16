@@ -61,20 +61,15 @@ export default function PosterFlip({ onEnd }) {
     const shuffled = shuffle(solved)
     setTiles(shuffled)
     setMoves(0)
-    setTimeLeft(90)
+    setElapsed(0)
     setScore(0)
     setPhase('playing')
   }, [pickMovie])
 
-  // Timer
+  // Elapsed time counter (no timeout — score is lower for slower solves)
   useEffect(() => {
     if (phase !== 'playing') return
-    const t = setInterval(() => {
-      setTimeLeft(tt => {
-        if (tt <= 1) { clearInterval(t); setPhase('timeout'); return 0 }
-        return tt - 1
-      })
-    }, 1000)
+    const t = setInterval(() => setElapsed(s => s + 1), 1000)
     return () => clearInterval(t)
   }, [phase])
 

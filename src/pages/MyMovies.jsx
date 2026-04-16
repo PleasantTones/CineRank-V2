@@ -221,8 +221,8 @@ export default function MyMovies() {
                     onClick={() => {
                         const nowUnseen = isSeen
                         if (nowUnseen) markUnseen(movie.id); else markSeen(movie.id)
-                        // Persist seen/unseen to Supabase
-                        if (player && ratings[movie.id] !== undefined) {
+                        // Persist seen/unseen to Supabase (works for both hardcoded + dynamic movies)
+                        if (player) {
                           const r = ratings[movie.id] || {}
                           sbFetch('/rest/v1/ratings', {
                             method: 'POST', prefer: 'resolution=merge-duplicates',
